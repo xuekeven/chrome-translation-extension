@@ -5,10 +5,27 @@
   <title>英文到中文翻译插件</title>
   <style>
     body { width: 400px; padding: 10px; }
+    input { width: 100%; margin-bottom: 10px; }
+    label { display: block; margin-top: 10px; }
   </style>
 </head>
 <body>
   <h1>英文到中文翻译插件</h1>
   <p>选择英文文本（单词、句子、段落）即可自动翻译成简体中文</p>
+  
+  <h2>设置 API 密钥</h2>
+  <label for="googleApiKey">Google API Key:</label>
+  <input type="text" id="googleApiKey" placeholder="请输入 Google API Key" />
+  
+  <label for="baiduAppId">百度翻译 App ID:</label>
+  <input type="text" id="baiduAppId" placeholder="请输入百度翻译 App ID" />
+  
+  <label for="baiduKey">百度翻译 Key:</label>
+  <input type="text" id="baiduKey" placeholder="请输入百度翻译 Key" />
+  
+  <button id="saveButton">保存</button>
+  <span id="saveMessage" style="margin-left: 10px;"></span>
+
+  <script src="popup.js"></script>
 </body>
 </html>

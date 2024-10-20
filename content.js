@@ -148,7 +148,7 @@ function createTranslatePopup(text, x, y) {
     cursor: move;
     font-family: Arial, sans-serif;
     left: ${x}px;
-    top: ${y}px;
+    top: ${y + window.scrollY}px; // 添加当前滚动位置
     max-height: 400px;
     overflow-y: auto;
   `;
@@ -213,7 +213,7 @@ function showTranslatePopup(text, x, y) {
   hideTranslatePopup();
   
   // 创建新弹出框
-  createTranslatePopup(text, x, y);
+  createTranslatePopup(text, x, y + window.scrollY); // 添加当前滚动位置
 
   hideTranslateIcon();
 

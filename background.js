@@ -203,15 +203,16 @@ var MD5 = function (string) {
 // 现有的 background.js 代码从这里开始
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "translate") {
-    if (isEnglishWord(request.text)) {
-      fetchWordDefinition(request.text, sender.tab.id)
+    const text = request.text;
+    if (isEnglishWord(text)) {
+      fetchWordDefinition(text, sender.tab.id)
         .then(() => sendResponse({success: true}))
         .catch((error) => {
           console.error('Error in fetchWordDefinition:', error);
           sendResponse({success: false, error: error.message});
         });
     } else {
-      translateText(request.text, sender.tab.id)
+      translateText(text, sender.tab.id)
         .then(() => sendResponse({success: true}))
         .catch((error) => {
           console.error('Error in translateText:', error);
@@ -279,6 +280,11 @@ async function fetchWordDefinition(word, tabId) {
 
 async function translateText(text, tabId) {
   try {
+    // 获取存储的 API 密钥和 App ID
+    const { googleApiKey, baiduAppId, baiduKey } = await new Promise((resolve) => {
+      chrome.storage.sync.get(['googleApiKey', 'baiduAppId', 'baiduKey'], resolve);
+    });
+
     // 首先发送一个初始的翻译结果框架
     chrome.tabs.sendMessage(tabId, {
       action: "updateTranslation",
@@ -292,22 +298,24 @@ async function translateText(text, tabId) {
       complete: false
     });
 
-    // 翻译百度
-    const baiduResult = await translateWithBaidu(text);
-    chrome.tabs.sendMessage(tabId, {
-      action: "updateTranslation",
-      translation: `
-        <p style="font-size: 16px; color: white; margin: 0;">
-          <strong>原文：</strong><br>${text}<br><br>
-          <strong>百度翻译：</strong><br>${baiduResult}<br><br>
-          <strong>Google 翻译：</strong><br>正在翻译...
-        </p>
-      `,
-      complete: false
-    });
+    let baiduResult = '';
+    let googleResult = '';
 
-    // 翻译 Google
-    const googleResult = await translateWithGoogle(text);
+    // 检查百度翻译的 App ID 和 Key
+    if (baiduAppId && baiduKey) {
+      baiduResult = await translateWithBaidu(text, baiduAppId, baiduKey);
+    } else {
+      baiduResult = "<p style='color: red;'>未设置百度翻译的 App ID 和 Key。请点击右上角的插件设置。</p>";
+    }
+
+    // 检查 Google API Key
+    if (googleApiKey) {
+      googleResult = await translateWithGoogle(text, googleApiKey);
+    } else {
+      googleResult = "<p style='color: red;'>未设置 Google API Key。请点击右上角的插件设置。</p>";
+    }
+
+    // 更新翻译结果
     chrome.tabs.sendMessage(tabId, {
       action: "updateTranslation",
       translation: `
@@ -331,9 +339,8 @@ async function translateText(text, tabId) {
   }
 }
 
-async function translateWithGoogle(text) {
-  const key = 'your google key';
-  const url = `https://translation.googleapis.com/language/translate/v2?key=${key}`;
+async function translateWithGoogle(text, apiKey) {
+  const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
   const data = {
     q: text,
     source: 'en',
@@ -356,16 +363,14 @@ async function translateWithGoogle(text) {
   }
 }
 
-async function translateWithBaidu(text) {
-  const appid = 'your baidu appid';
-  const key = 'your baidu key';
+async function translateWithBaidu(text, appId, key) {
   const salt = new Date().getTime();
   const from = 'en';
   const to = 'zh';
-  const str1 = appid + text + salt + key;
+  const str1 = appId + text + salt + key;
   const sign = MD5(str1).toString();
 
-  const url = `http://api.fanyi.baidu.com/api/trans/vip/translate?q=${encodeURIComponent(text)}&from=${from}&to=${to}&appid=${appid}&salt=${salt}&sign=${sign}`;
+  const url = `http://api.fanyi.baidu.com/api/trans/vip/translate?q=${encodeURIComponent(text)}&from=${from}&to=${to}&appid=${appId}&salt=${salt}&sign=${sign}`;
 
   const response = await fetch(url);
   const json = await response.json();

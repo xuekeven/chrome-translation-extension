@@ -4,7 +4,8 @@
   "version": "1.0",
   "description": "选择英文文本（单词、句子、段落）并翻译成简体中文",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "host_permissions": [
     "https://api.dictionaryapi.dev/",
