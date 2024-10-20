@@ -1,0 +1,429 @@
+// 存储翻译结果弹出框的DOM元素
+// let translatePopup = null;
+
+// 标记是否正在拖动弹出框
+let isDragging = false;
+
+// 存储拖动时鼠标相对于弹出框左上角的偏移量
+let dragOffsetX, dragOffsetY;
+
+// 存储最后选中的文本
+let lastSelectedText = '';
+
+// 用于延迟处理选择变化的定时器
+let selectionTimeout = null;
+
+// 标记是否已添加加载动画的样式
+let loadingStyleAdded = false;
+
+// 添加这个新函数
+function saveAndRestoreSelection(action) {
+  const selection = window.getSelection();
+  const range = selection.getRangeAt(0);
+  action();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+/**
+ * 创建翻译图标
+ * @param {number} x - 图标的横坐标
+ * @param {number} y - 图标的纵坐标
+ * @returns {HTMLElement} - 创建的翻译图标元素
+ */
+function createTranslateIcon(x, y) {
+  const translateIcon = document.createElement('div');
+  translateIcon.style.cssText = `
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: #667eea;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 1000;
+    left: ${x}px;
+    top: ${y}px;
+  `;
+  translateIcon.className = 'translate-icon';
+  translateIcon.innerHTML = '<span style="color: white; font-weight: bold;">译</span>';
+  translateIcon.addEventListener('click', handleIconClick);
+  document.body.appendChild(translateIcon);
+  console.log('Translate icon created at:', x, y); // 添加日志
+  return translateIcon;
+}
+
+/**
+ * 显示翻译图标
+ * @param {number} x - 图标的横坐标
+ * @param {number} y - 图标的纵坐标
+ */
+function showTranslateIcon(x, y) {
+  // 移除可能存在的旧图标
+  hideTranslateIcon();
+  // 创建新图标
+  createTranslateIcon(x, y);
+}
+
+/**
+ * 隐藏翻译图标
+ */
+function hideTranslateIcon() {
+  const existingIcon = document.querySelector('.translate-icon');
+  if (existingIcon) {
+    existingIcon.remove();
+    console.log('Existing translate icon removed'); // 添加日志
+  }
+}
+
+/**
+ * 显示加载中的动画
+ */
+function showLoadingIcon() {
+  const existingIcon = document.querySelector('.translate-icon');
+  if (existingIcon) {
+    existingIcon.innerHTML = '<div class="loading"></div>';
+    if (!loadingStyleAdded) {
+      const style = document.createElement('style');
+      style.textContent = `
+        .loading {
+          border: 3px solid rgba(255,255,255,0.3);
+          border-radius: 50%;
+          border-top: 3px solid white;
+          width: 20px;
+          height: 20px;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+      loadingStyleAdded = true;
+    }
+  }
+}
+
+/**
+ * 处理翻译图标的点击事件
+ * @param {Event} e - 点击事件对象
+ */
+function handleIconClick(e) {
+  e.preventDefault(); // 阻止默认行为
+  e.stopPropagation(); // 阻止事件冒泡
+
+  const iconRect = e.currentTarget.getBoundingClientRect();
+  console.log('iconRect:', iconRect);
+  translateText(lastSelectedText, iconRect.left, iconRect.top);
+
+  // 在短暂延迟后重新选择文本
+  setTimeout(() => {
+    selectTextInDocument(lastSelectedText);
+  }, 10);
+}
+
+/**
+ * 创建翻译结果弹出框
+ * @param {string} text - 翻译结果文本
+ * @param {number} x - 弹出框的横坐标
+ * @param {number} y - 弹出框的纵坐标
+ * @returns {HTMLElement} - 创建的翻译结果弹出框元素
+ */
+function createTranslatePopup(text, x, y) {
+  const translatePopup = document.createElement('div');
+  translatePopup.style.cssText = `
+    position: absolute;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+    z-index: 10000;
+    max-width: 300px;
+    cursor: move;
+    font-family: Arial, sans-serif;
+    left: ${x}px;
+    top: ${y}px;
+    max-height: 400px;
+    overflow-y: auto;
+  `;
+  translatePopup.className = 'translate-popup';
+
+  // 创建关闭按钮
+  const closeButton = document.createElement('button');
+  closeButton.textContent = '×';
+  closeButton.style.cssText = `
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.8);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.3s ease;
+  `;
+  closeButton.addEventListener('click', () => translatePopup.remove());
+  closeButton.addEventListener('mouseover', function() {
+    this.style.color = 'white';
+  });
+  closeButton.addEventListener('mouseout', function() {
+    this.style.color = 'rgba(255,255,255,0.8)';
+  });
+
+  // 创建内容div
+  const contentDiv = document.createElement('div');
+  contentDiv.style.lineHeight = '1.4';
+  contentDiv.style.cursor = 'auto';
+  contentDiv.innerHTML = text; // 用 innerHTML 来渲染 HTML
+
+  // 组装弹出框
+  translatePopup.appendChild(closeButton);
+  translatePopup.appendChild(contentDiv);
+  document.body.appendChild(translatePopup);
+
+  // 添加拖动事件监听器
+  translatePopup.addEventListener('mousedown', startDragging);
+  document.addEventListener('mousemove', drag);
+  document.addEventListener('mouseup', stopDragging);
+
+  // 添加一个用于更新内容的方法
+  translatePopup.updateContent = function(newContent) {
+    contentDiv.innerHTML = newContent;
+  };
+
+  return translatePopup;
+}
+
+/**
+ * 显示翻译结果弹出框
+ * @param {string} text - 翻译结果文本
+ * @param {number} x - 弹出框的横坐标
+ * @param {number} y - 弹出框的纵坐标
+ */
+function showTranslatePopup(text, x, y) {
+  // 移除可能存在的旧弹出框
+  hideTranslatePopup();
+  
+  // 创建新弹出框
+  createTranslatePopup(text, x, y);
+
+  hideTranslateIcon();
+
+  // 在短暂延迟后重新选择文本
+  setTimeout(() => {
+    selectTextInDocument(lastSelectedText);
+  }, 10);
+}
+
+/**
+ * 隐藏翻译结果弹出框
+ */
+function hideTranslatePopup() {
+  const existingPopup = document.querySelector('.translate-popup');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
+}
+
+/**
+ * 检查文本是否包含中文
+ * @param {string} text - 要检查的文本
+ * @returns {boolean} - 如果包含中文返回true，否则返回false
+ */
+function isChinese(text) {
+  // 使用正则表达式检查文本是否包含中文字符
+  return /[\u4e00-\u9fa5]/.test(text);
+}
+
+/**
+ * 检查文本是否为英文单词
+ * @param {string} text - 要检查的文本
+ * @returns {boolean} - 如果是英文单词返回true，否则返回false
+ */
+function isEnglishWord(text) {
+  return /^[a-zA-Z]+$/.test(text);
+}
+
+/**
+ * 检查文本是否为英文句子
+ * @param {string} text - 要检查的文本
+ * @returns {boolean} - 如果是英文句子返回true，否则返回false
+ */
+function isEnglishSentence(text) {
+  // 使用正则表达式检查文本是否为英文句子
+  return /^[A-Z][^.!?]*[.!?]$/.test(text);
+}
+
+/**
+ * 发送翻译请求并显示结果
+ * @param {string} text - 要翻译的文本
+ * @param {number} x - 结果显示的横坐标
+ * @param {number} y - 结果显示的纵坐标
+ */
+function translateText(text, x, y) {
+  hideTranslateIcon(); // 隐藏翻译图标
+  
+  // 创建一个新的弹出框或获取现有的弹出框
+  let popup = document.querySelector('.translate-popup');
+  if (!popup) {
+    popup = createTranslatePopup("正在翻译...", x, y);
+  }
+  
+  chrome.runtime.sendMessage({action: "translate", text: text});
+}
+
+function updateTranslatePopup(newContent, word, complete) {
+  const translatePopup = document.querySelector('.translate-popup');
+  if (translatePopup && translatePopup.updateContent) {
+    translatePopup.updateContent(newContent);
+    
+    if (complete) {
+      // 添加按钮点击事件监听器（如果有的话）
+      setTimeout(() => {
+        const moreButtons = translatePopup.querySelectorAll('.moreButton');
+        moreButtons.forEach(button => {
+          button.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            const entryWord = button.getAttribute('data-word');
+            window.open(`https://www.youdao.com/result?word=${encodeURIComponent(entryWord)}&lang=en`, '_blank');
+          });
+        });
+      }, 0);
+    }
+  }
+}
+
+function hideLoadingIcon() {
+  const existingIcon = document.querySelector('.translate-icon');
+  if (existingIcon) {
+    existingIcon.remove();
+  }
+}
+
+/**
+ * 在文档中选择指定的文本
+ * @param {string} text - 要选择的文本
+ */
+function selectTextInDocument(text) {
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+
+  const treeWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  let node;
+  while (node = treeWalker.nextNode()) {
+    const index = node.textContent.indexOf(text);
+    if (index > -1) {
+      const range = document.createRange();
+      range.setStart(node, index);
+      range.setEnd(node, index + text.length);
+      selection.addRange(range);
+      break;
+    }
+  }
+}
+
+// 修改开始拖动、拖动和停止拖动的函数
+let dragTarget = null;
+
+function startDragging(e) {
+  if (e.target.style.cursor === 'move') {
+    isDragging = true;
+    dragTarget = e.target;
+    dragOffsetX = e.clientX - dragTarget.offsetLeft;
+    dragOffsetY = e.clientY - dragTarget.offsetTop;
+  }
+}
+
+function drag(e) {
+  if (isDragging && dragTarget) {
+    dragTarget.style.left = (e.clientX - dragOffsetX) + 'px';
+    dragTarget.style.top = (e.clientY - dragOffsetY) + 'px';
+  }
+}
+
+function stopDragging() {
+  isDragging = false;
+  dragTarget = null;
+}
+
+// 修改鼠标释放事件监听器
+document.addEventListener('mouseup', function(e) {
+  const selectedText = window.getSelection().toString().trim();
+  if (
+    selectedText && !isChinese(selectedText)
+    // (isEnglishSentence(selectedText) || isEnglishWord(selectedText))
+  ) {
+    lastSelectedText = selectedText;
+    const range = window.getSelection().getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const x = e.clientX;
+    const y = window.pageYOffset + rect.bottom;
+    console.log('Selected text:', selectedText); // 添加日志
+    console.log('Calling showTranslateIcon with:', x, y); // 添加日志
+    saveAndRestoreSelection(() => {
+      showTranslateIcon(x, y);
+    });
+  }
+});
+
+// 监听点击事件，用于隐藏翻译图标和弹出框
+document.addEventListener('click', function(e) {
+  // 然后检查translatePopup是否存在，如果存在且点击不在其内部，则隐藏它
+  const selectedText = window.getSelection().toString().trim();
+  if (!selectedText) {
+    hideTranslateIcon();
+  }
+  const translatePopup = document.querySelector('.translate-popup');
+  if (translatePopup && !translatePopup.contains(e.target)) {
+    hideTranslatePopup();
+  }
+});
+
+// 监听双击事件，用于翻译单词
+// document.addEventListener('dblclick', function(e) {
+//   const selectedText = window.getSelection().toString().trim();
+//   if (selectedText && isEnglishWord(selectedText)) {
+//     lastSelectedText = selectedText;
+//     translateText(selectedText, e.pageX, e.pageY + 20);
+//   } else {
+//     hideTranslateIcon();
+//   }
+// });
+
+// 监听来自背景脚本的消息
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.action === "translate") {
+    var selectedText = window.getSelection().toString().trim();
+    if (selectedText && !isChinese(selectedText)) {
+      sendResponse({text: selectedText});
+    } else {
+      sendResponse({text: null});
+    }
+  }
+  return true;
+});
+
+// 监听鼠标释放事件，用于处理拖动结束后的情况
+document.addEventListener('mouseup', function() {
+  if (isDragging) {
+    isDragging = false;
+    // 在拖动结束后，更新lastSelectedText为当前选中的文本
+    lastSelectedText = window.getSelection().toString().trim();
+  }
+});
+
+// 修改消息监听器
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.action === "updateTranslation") {
+    updateTranslatePopup(request.translation, request.word, request.complete);
+  }
+});
+

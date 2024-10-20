@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "英文到中文翻译插件",
+  "version": "1.0",
+  "description": "选择英文文本（单词、句子、段落）并翻译成简体中文",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.dictionaryapi.dev/",
+    "https://translation.googleapis.com/",
+    "https://cdnjs.cloudflare.com/",
+    "http://api.fanyi.baidu.com/"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["crypto-js.min.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
