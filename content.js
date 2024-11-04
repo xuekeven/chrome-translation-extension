@@ -427,3 +427,63 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   }
 });
 
+// 在 updateTranslatePopup 函数中添加事件监听
+function updateTranslatePopup(translation, word, complete) {
+  let translatePopup = document.querySelector('.translate-popup');
+  
+  if (!translatePopup) {
+    translatePopup = document.createElement('div');
+    translatePopup.className = 'translate-popup';
+    translatePopup.style.cssText = `
+      position: fixed;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 5px;
+      max-width: 300px;
+      z-index: 1000;
+      cursor: move;
+    `;
+    document.body.appendChild(translatePopup);
+    
+    // 添加拖动事件监听器
+    translatePopup.addEventListener('mousedown', startDragging);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', stopDragging);
+  }
+  
+  translatePopup.innerHTML = translation;
+  
+  // 为播放按钮添加点击事件
+  const playButtons = translatePopup.querySelectorAll('.playButton');
+  playButtons.forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const word = this.getAttribute('data-word');
+      chrome.runtime.sendMessage({
+        action: "playAudio",
+        word: word
+      });
+    });
+  });
+  
+  // 为查看更多按钮添加点击事件
+  const moreButtons = translatePopup.querySelectorAll('.moreButton');
+  moreButtons.forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const word = this.getAttribute('data-word');
+      window.open(`https://dict.youdao.com/result?word=${encodeURIComponent(word)}&lang=en`, '_blank');
+    });
+  });
+}
+
+// 处理来自 background 的音频播放消息
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.action === "playAudioInContent") {
+    const audio = new Audio(request.audioUrl);
+    audio.play().catch(error => {
+      console.error('Error playing audio:', error);
+    });
+  }
+});
+

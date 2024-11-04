@@ -11,7 +11,8 @@
     "https://api.dictionaryapi.dev/",
     "https://translation.googleapis.com/",
     "https://cdnjs.cloudflare.com/",
-    "http://api.fanyi.baidu.com/"
+    "http://api.fanyi.baidu.com/",
+    "https://dict.youdao.com/"
   ],
   "action": {
     "default_popup": "popup.html"

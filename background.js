@@ -234,7 +234,7 @@ async function fetchWordDefinition(word, tabId) {
     const data = await response.json();
 
     if (data.result && data.result.code === 200 && data.data && data.data.entries) {
-      let result = `<h2 style="font-size: 18px; color: white; margin: 0 0 10px 0;">${word}</h2>`; // 单词作为标题
+      let result = `<h2 style="font-size: 18px; color: white; margin: 0 0 10px 0;">${word}</h2>`;
       
       result += '<ol style="list-style-type: none; padding-left: 0; margin: 0;">';
       data.data.entries.forEach((entry, index) => {
@@ -242,6 +242,17 @@ async function fetchWordDefinition(word, tabId) {
           <li style="margin: 5px 0;">
             <div style="display: flex; align-items: center;">
               <div style="font-size: 14px; color: white;">${entry.entry}</div>
+              <button class="playButton" data-word="${entry.entry}" style="
+                background: none;
+                border: none;
+                color: white;
+                padding: 2px 5px;
+                text-align: center;
+                display: inline-block;
+                font-size: 14px;
+                margin-left: 10px;
+                cursor: pointer;
+              ">🔊</button>
               <button class="moreButton" data-word="${entry.entry}" style="
                 background-color: #4CAF50;
                 border: none;
@@ -266,15 +277,23 @@ async function fetchWordDefinition(word, tabId) {
         action: "updateTranslation", 
         translation: result, 
         complete: true,
-        word: word // 传递单词给content script
+        word: word
       });
     } else {
-      chrome.tabs.sendMessage(tabId, {action: "updateTranslation", translation: "<p style='font-size: 16px; color: white; margin: 0;'>未找到该单词的定义。</p>", complete: true});
+      chrome.tabs.sendMessage(tabId, {
+        action: "updateTranslation", 
+        translation: "<p style='font-size: 16px; color: white; margin: 0;'>未找到该单词的定义。</p>", 
+        complete: true
+      });
     }
   } catch (error) {
     console.error('API error:', error);
-    chrome.tabs.sendMessage(tabId, {action: "updateTranslation", translation: "<p style='font-size: 16px; color: white; margin: 0;'>获取单词定义时出错。</p>", complete: true});
-    throw error; // 重新抛出错误以便在调用者那里捕获
+    chrome.tabs.sendMessage(tabId, {
+      action: "updateTranslation", 
+      translation: "<p style='font-size: 16px; color: white; margin: 0;'>获取单词定义时出错。</p>", 
+      complete: true
+    });
+    throw error;
   }
 }
 
@@ -386,5 +405,17 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.action.onClicked.addListener((tab) => {
     // 可以在这里添加点击扩展图标时的行为
   });
+});
+
+// 修改播放音频的消息处理函数
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.action === "playAudio") {
+    // 向 content script 发送播放音频的消息
+    chrome.tabs.sendMessage(sender.tab.id, {
+      action: "playAudioInContent",
+      audioUrl: `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.word)}&type=2`
+    });
+    return true;
+  }
 });
 
