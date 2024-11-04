@@ -229,30 +229,62 @@ function isEnglishWord(text) {
 
 async function fetchWordDefinition(word, tabId) {
   try {
-    const url = `https://dict.youdao.com/suggest?q=${encodeURIComponent(word)}&le=en&doctype=json&cache=false`;
-    const response = await fetch(url);
+    // 使用有道词典的另一个 API 接口
+    const url = `https://dict.youdao.com/jsonapi_s?doctype=json&q=${encodeURIComponent(word)}`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
     const data = await response.json();
+    
+    // 提取音标信息
+    let ukPhonetic = '';
+    let usPhonetic = '';
+    if (data.ec && data.ec.word && data.ec.word[0] && data.ec.word[0].ukphone && data.ec.word[0].usphone) {
+      ukPhonetic = data.ec.word[0].ukphone; // 英音音标
+      usPhonetic = data.ec.word[0].usphone; // 美音音标
+    }
 
-    if (data.result && data.result.code === 200 && data.data && data.data.entries) {
+    // 获取释义信息
+    const suggestUrl = `https://dict.youdao.com/suggest?q=${encodeURIComponent(word)}&le=en&doctype=json&cache=false`;
+    const suggestResponse = await fetch(suggestUrl);
+    const suggestData = await suggestResponse.json();
+
+    if (suggestData.result && suggestData.result.code === 200 && suggestData.data && suggestData.data.entries) {
       let result = `<h2 style="font-size: 18px; color: white; margin: 0 0 10px 0;">${word}</h2>`;
       
       result += '<ol style="list-style-type: none; padding-left: 0; margin: 0;">';
-      data.data.entries.forEach((entry, index) => {
+      suggestData.data.entries.forEach((entry, index) => {
         result += `
           <li style="margin: 5px 0;">
             <div style="display: flex; align-items: center;">
               <div style="font-size: 14px; color: white;">${entry.entry}</div>
-              <button class="playButton" data-word="${entry.entry}" style="
+              <button class="playButton" data-word="${entry.entry}" data-type="1" style="
                 background: none;
                 border: none;
                 color: white;
                 padding: 2px 5px;
                 text-align: center;
                 display: inline-block;
-                font-size: 14px;
+                font-size: 12px;
                 margin-left: 10px;
                 cursor: pointer;
-              ">🔊</button>
+                font-family: Arial, sans-serif;
+              ">🇬🇧 /${ukPhonetic || 'n/a'}/</button>
+              <button class="playButton" data-word="${entry.entry}" data-type="2" style="
+                background: none;
+                border: none;
+                color: white;
+                padding: 2px 5px;
+                text-align: center;
+                display: inline-block;
+                font-size: 12px;
+                margin-left: 5px;
+                cursor: pointer;
+                font-family: Arial, sans-serif;
+              ">🇺🇸 /${usPhonetic || 'n/a'}/</button>
               <button class="moreButton" data-word="${entry.entry}" style="
                 background-color: #4CAF50;
                 border: none;
@@ -413,7 +445,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     // 向 content script 发送播放音频的消息
     chrome.tabs.sendMessage(sender.tab.id, {
       action: "playAudioInContent",
-      audioUrl: `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.word)}&type=2`
+      audioUrl: `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.word)}&type=${request.type}`
     });
     return true;
   }

@@ -459,9 +459,11 @@ function updateTranslatePopup(translation, word, complete) {
     button.addEventListener('click', function(e) {
       e.stopPropagation();
       const word = this.getAttribute('data-word');
+      const type = this.getAttribute('data-type');
       chrome.runtime.sendMessage({
         action: "playAudio",
-        word: word
+        word: word,
+        type: type
       });
     });
   });
