@@ -229,7 +229,6 @@ function isEnglishWord(text) {
 
 async function fetchWordDefinition(word, tabId) {
   try {
-    // 使用有道词典的另一个 API 接口
     const url = `https://dict.youdao.com/jsonapi_s?doctype=json&q=${encodeURIComponent(word)}`;
     const response = await fetch(url, {
       headers: {
@@ -239,85 +238,161 @@ async function fetchWordDefinition(word, tabId) {
     });
     const data = await response.json();
     
-    // 提取音标信息
-    let ukPhonetic = '';
-    let usPhonetic = '';
-    if (data.ec && data.ec.word && data.ec.word[0] && data.ec.word[0].ukphone && data.ec.word[0].usphone) {
-      ukPhonetic = data.ec.word[0].ukphone; // 英音音标
-      usPhonetic = data.ec.word[0].usphone; // 美音音标
+    // 1. 标题行：包含单词、音标和查看更多按钮
+    let result = `
+      <div style="display: flex; align-items: center; margin-bottom: 5px;">
+        <h2 style="font-size: 18px; color: white; margin: 0;">${word}</h2>
+    `;
+    
+    // 添加音标按钮（如果有）
+    if (data.ec?.word?.[0]) {
+      const wordInfo = data.ec.word[0];
+      result += `
+        <button class="playButton" data-word="${word}" data-type="1" style="
+          background: none;
+          border: none;
+          color: white;
+          padding: 2px 5px;
+          text-align: center;
+          display: inline-block;
+          font-size: 12px;
+          margin-left: 10px;
+          cursor: pointer;
+          font-family: Arial, sans-serif;
+        ">英 /${wordInfo.ukphone || 'n/a'}/</button>
+        <button class="playButton" data-word="${word}" data-type="2" style="
+          background: none;
+          border: none;
+          color: white;
+          padding: 2px 5px;
+          text-align: center;
+          display: inline-block;
+          font-size: 12px;
+          margin-left: 5px;
+          cursor: pointer;
+          font-family: Arial, sans-serif;
+        ">美 /${wordInfo.usphone || 'n/a'}/</button>
+      `;
     }
 
-    // 获取释义信息
-    const suggestUrl = `https://dict.youdao.com/suggest?q=${encodeURIComponent(word)}&le=en&doctype=json&cache=false`;
-    const suggestResponse = await fetch(suggestUrl);
-    const suggestData = await suggestResponse.json();
+    // 添加查看更多按钮
+    result += `
+        <button class="moreButton" data-word="${word}" style="
+          background-color: #4CAF50;
+          border: none;
+          color: white;
+          text-align: center;
+          text-decoration: none;
+          display: inline-block;
+          font-size: 12px;
+          margin-left: 10px;
+          cursor: pointer;
+          border-radius: 3px;
+        ">查看更多</button>
+      </div>
+    `;
 
-    if (suggestData.result && suggestData.result.code === 200 && suggestData.data && suggestData.data.entries) {
-      let result = `<h2 style="font-size: 18px; color: white; margin: 0 0 10px 0;">${word}</h2>`;
-      
-      result += '<ol style="list-style-type: none; padding-left: 0; margin: 0;">';
-      suggestData.data.entries.forEach((entry, index) => {
-        result += `
-          <li style="margin: 5px 0;">
-            <div style="display: flex; align-items: center;">
-              <div style="font-size: 14px; color: white;">${entry.entry}</div>
-              <button class="playButton" data-word="${entry.entry}" data-type="1" style="
-                background: none;
-                border: none;
-                color: white;
-                padding: 2px 5px;
-                text-align: center;
-                display: inline-block;
-                font-size: 12px;
-                margin-left: 10px;
-                cursor: pointer;
-                font-family: Arial, sans-serif;
-              ">🇬🇧 /${ukPhonetic || 'n/a'}/</button>
-              <button class="playButton" data-word="${entry.entry}" data-type="2" style="
-                background: none;
-                border: none;
-                color: white;
-                padding: 2px 5px;
-                text-align: center;
-                display: inline-block;
-                font-size: 12px;
-                margin-left: 5px;
-                cursor: pointer;
-                font-family: Arial, sans-serif;
-              ">🇺🇸 /${usPhonetic || 'n/a'}/</button>
-              <button class="moreButton" data-word="${entry.entry}" style="
-                background-color: #4CAF50;
-                border: none;
-                color: white;
-                padding: 2px 5px;
-                text-align: center;
-                text-decoration: none;
-                display: inline-block;
-                font-size: 10px;
-                margin-left: 10px;
-                cursor: pointer;
-                border-radius: 3px;
-              ">查看更多</button>
-            </div>
-            <div style="font-size: 14px; color: white; margin-left: 10px;">${entry.explain}</div>
-          </li>
-        `;
-      });
-      result += '</ol>';
-
-      chrome.tabs.sendMessage(tabId, {
-        action: "updateTranslation", 
-        translation: result, 
-        complete: true,
-        word: word
-      });
-    } else {
-      chrome.tabs.sendMessage(tabId, {
-        action: "updateTranslation", 
-        translation: "<p style='font-size: 16px; color: white; margin: 0;'>未找到该单词的定义。</p>", 
-        complete: true
-      });
+    // 2. 词性和释义
+    if (data.ec?.word?.[0]?.trs?.length > 0) {
+      result += `
+        <div style="margin-bottom: 5px;">
+          <strong style="color: #ddd; font-size: 12px;">释义</strong>
+          <ul style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
+            ${data.ec.word[0].trs.map(tr => `<li style="color: white; margin: 3px 0; font-size: 12px;">${tr.tr[0].l.i[0] ? `<span style="color: #white;">${tr.tr[0].l.i[0]}</span> ` : ''}</li>`).join('')}
+          </ul>
+        </div>
+      `;
     }
+
+    // 3. 词形变化
+    if (data.ec?.word?.[0]?.wfs?.length > 0) {
+      result += `
+        <div style="margin-bottom: 5px;">
+          <strong style="color: #ddd; font-size: 12px;">词形变化</strong>
+          <ul style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
+            ${data.ec.word[0].wfs.map(wf => `<li style="color: white; font-size: 12px;"><span style="color: #white;">${wf.wf.name} </span> ${wf.wf.value}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // 4. 同根词
+    if (data.rel_word?.rels && Array.isArray(data.rel_word.rels) && data.rel_word.rels.length > 0) {
+      result += `
+        <div style="margin-bottom: 5px;">
+          <strong style="color: #ddd; font-size: 12px;">同根词</strong>
+          <div style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
+            ${data.rel_word.rels.map(rel => `
+              <div style="color: white; font-size: 12px;">
+                ${(rel.rel.words || []).map(w => `
+                  <div>
+                    <span style="color: #white;">${rel.rel.pos || ''}</span>
+                    ${w?.word || ''}${w?.tran}
+                  </div>`).join('')}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 5. 同义词/近义词
+    if (data.syno?.synos?.length > 0) {
+      result += `
+        <div style="margin-bottom: 5px;">
+          <strong style="color: #ddd; font-size: 12px;">同义词</strong>
+          <ul style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
+            ${data.syno.synos.map(syno => `
+              <li style="color: white; font-size: 12px;">
+                <span style="color: #white;">${syno.syno.pos || ''}</span> 
+                ${(syno.syno.ws || []).map(w => w?.w || '').filter(Boolean).join(', ')}
+                ${syno.syno.tran ? `<br><span style="color: #white;"></span> ${syno.syno.tran}` : ''}
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // 6. 例句
+    if (data.blng_sents_part?.['sentence-pair']?.length > 0) {
+      result += `
+        <div style="margin-bottom: 5px;">
+          <strong style="color: #ddd; font-size: 12px;">例句</strong>
+          <ul style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
+            ${data.blng_sents_part['sentence-pair'].map(pair => `
+              <li style="color: white; margin-bottom: 5px; font-size: 12px;">
+                <div>${pair.sentence}</div>
+                <div style="color: #888;">${pair['sentence-translation']}</div>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // 7. 词组搭配
+    if (data.phrs?.phrs?.length > 0) {
+      result += `
+        <div style="margin-bottom: 5px;">
+          <strong style="color: #ddd; font-size: 12px;">词组搭配</strong>
+          <ul style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
+            ${data.phrs.phrs.map(phr => `
+              <li style="color: white; margin-bottom: 5px; font-size: 12px;">
+                <span style="color: white;">${phr.phr.headword.l.i}</span><span style="color: #white;; padding-left: 5px;">${phr.phr.trs[0].tr.l.i}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    chrome.tabs.sendMessage(tabId, {
+      action: "updateTranslation", 
+      translation: result, 
+      complete: true,
+      word: word
+    });
   } catch (error) {
     console.error('API error:', error);
     chrome.tabs.sendMessage(tabId, {

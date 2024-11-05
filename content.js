@@ -140,17 +140,24 @@ function createTranslatePopup(text, x, y) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    padding: 15px;
-    border-radius: 10px;
+    padding: 10px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
-    z-index: 10000;
-    max-width: 300px;
+    max-width: 400px;
     cursor: move;
     font-family: Arial, sans-serif;
     left: ${x}px;
     top: ${y + window.scrollY}px; // 添加当前滚动位置
-    max-height: 400px;
     overflow-y: auto;
+    border-radius: 8px;
+    width: 350px;
+    max-height: 500px;
+    z-index: 1000;
+    cursor: move;
+    line-height: 1.5;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
   `;
   translatePopup.className = 'translate-popup';
 
@@ -310,7 +317,7 @@ function hideLoadingIcon() {
 
 /**
  * 在文档中选择指定的文本
- * @param {string} text - 要选择的文本
+ * @param {string} text - 要选的文本
  */
 function selectTextInDocument(text) {
   const selection = window.getSelection();
@@ -438,10 +445,16 @@ function updateTranslatePopup(translation, word, complete) {
       position: fixed;
       padding: 10px;
       background: rgba(0, 0, 0, 0.8);
-      border-radius: 5px;
-      max-width: 300px;
+      border-radius: 8px;
+      width: 350px;
+      max-height: 500px;
       z-index: 1000;
       cursor: move;
+      line-height: 1.5;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
     `;
     document.body.appendChild(translatePopup);
     
