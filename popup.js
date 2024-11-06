@@ -32,11 +32,14 @@ document.getElementById('saveButton').addEventListener('click', function() {
   });
 });
 
-// 加载已保存的值
+// 加载已保存的值，默认以密码形式显示
 chrome.storage.sync.get(['googleApiKey', 'baiduAppId', 'baiduKey'], function(data) {
-  document.getElementById('googleApiKey').value = data.googleApiKey || '';
-  document.getElementById('baiduAppId').value = data.baiduAppId || '';
-  document.getElementById('baiduKey').value = data.baiduKey || '';
+  const inputs = ['googleApiKey', 'baiduAppId', 'baiduKey'];
+  inputs.forEach(id => {
+    const input = document.getElementById(id);
+    input.type = 'password';
+    input.value = data[id] || '';
+  });
 });
 
 // 保存开关状态
@@ -64,4 +67,19 @@ chrome.storage.sync.get(['isEnabled'], function(data) {
   // 如果从未设置过，默认为开启状态
   enableSwitch.checked = data.isEnabled !== undefined ? data.isEnabled : true;
   // 初始加载时不添加 user-interacted 类，这样就不会触发动画
+});
+
+// 添加切换密码可见性的功能
+document.querySelectorAll('.toggle-visibility').forEach(button => {
+  button.addEventListener('click', function() {
+    const targetId = this.getAttribute('data-target');
+    const input = document.getElementById(targetId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      this.textContent = '🔒';
+    } else {
+      input.type = 'password';
+      this.textContent = '👁️';
+    }
+  });
 });

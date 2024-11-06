@@ -5,7 +5,6 @@
   <title>英文到中文翻译插件</title>
   <style>
     body { width: 400px; padding: 10px; }
-    input { width: 100%; margin-bottom: 10px; }
     label { display: block; margin-top: 10px; }
 
     .key-header {
@@ -15,6 +14,30 @@
     .key-header-title {
       margin: 0 10px 0 0;
     }
+    /* 输入框容器样式 */
+    .input-container {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .input-container input {
+      width: 330px;
+      padding-right: 30px; /* 为眼睛图标留出空间 */
+    }
+    .toggle-visibility {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 5px;
+      color: #666;
+    }
+    .toggle-visibility:hover {
+      color: #333;
+    }
+
     /* 开关按钮样式 */
     .switch-container {
       display: flex;
@@ -87,21 +110,29 @@
   <div class="key-container">
     <div class="key-header">
       <h2 class="key-header-title">设置 API 密钥</h2>
-      <button id="saveButton">保存以下密钥</button>
     </div>
 
     <label for="googleApiKey">Google API Key:</label>
-    <input type="text" id="googleApiKey" placeholder="请输入 Google API Key" />
+    <div class="input-container">
+      <input type="password" id="googleApiKey" placeholder="请输入 Google API Key" />
+      <button class="toggle-visibility" data-target="googleApiKey">👁️</button>
+    </div>
     
     <label for="baiduAppId">百度翻译 App ID:</label>
-    <input type="text" id="baiduAppId" placeholder="请输入百度翻译 App ID" />
+    <div class="input-container">
+      <input type="password" id="baiduAppId" placeholder="请输入百度翻译 App ID" />
+      <button class="toggle-visibility" data-target="baiduAppId">👁️</button>
+    </div>
     
     <label for="baiduKey">百度翻译 Key:</label>
-    <input type="text" id="baiduKey" placeholder="请输入百度翻译 Key" />
-    
-    
-    <span id="saveMessage" style="margin-left: 10px;"></span>
+    <div class="input-container">
+      <input type="password" id="baiduKey" placeholder="请输入百度翻译 Key" />
+      <button class="toggle-visibility" data-target="baiduKey">👁️</button>
+    </div>
   </div>
+
+  <button id="saveButton">保存以上密钥</button>
+  <span id="saveMessage" style="margin: 15px 0;"></span>
 
   <script src="popup.js"></script>
 </body>
