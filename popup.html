@@ -7,24 +7,101 @@
     body { width: 400px; padding: 10px; }
     input { width: 100%; margin-bottom: 10px; }
     label { display: block; margin-top: 10px; }
+
+    .key-header {
+      display: flex;
+      align-items: center;
+    }
+    .key-header-title {
+      margin: 0 10px 0 0;
+    }
+    /* 开关按钮样式 */
+    .switch-container {
+      display: flex;
+      margin: 15px 0;
+      align-items: center;
+    }
+    .switch-label {
+      margin: 0 10px 0 0;
+      height: 100%;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+      margin: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      border-radius: 50%;
+      transform: translateX(0);
+    }
+    /* 只在用户交互时添加过渡效果 */
+    .switch.user-interacted .slider,
+    .switch.user-interacted .slider:before {
+      transition: .4s;
+    }
+    input:checked + .slider {
+      background-color: #4CAF50;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
   </style>
 </head>
 <body>
   <h1>英文到中文翻译插件</h1>
   <p>选择英文文本（单词、句子、段落）即可自动翻译成简体中文</p>
+
+  <!-- 添加开关按钮 -->
+  <div class="switch-container">
+    <h2 class="switch-label">启用翻译功能</h2>
+    <label class="switch">
+      <input type="checkbox" id="enableSwitch" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
   
-  <h2>设置 API 密钥</h2>
-  <label for="googleApiKey">Google API Key:</label>
-  <input type="text" id="googleApiKey" placeholder="请输入 Google API Key" />
-  
-  <label for="baiduAppId">百度翻译 App ID:</label>
-  <input type="text" id="baiduAppId" placeholder="请输入百度翻译 App ID" />
-  
-  <label for="baiduKey">百度翻译 Key:</label>
-  <input type="text" id="baiduKey" placeholder="请输入百度翻译 Key" />
-  
-  <button id="saveButton">保存</button>
-  <span id="saveMessage" style="margin-left: 10px;"></span>
+  <div class="key-container">
+    <div class="key-header">
+      <h2 class="key-header-title">设置 API 密钥</h2>
+      <button id="saveButton">保存以下密钥</button>
+    </div>
+
+    <label for="googleApiKey">Google API Key:</label>
+    <input type="text" id="googleApiKey" placeholder="请输入 Google API Key" />
+    
+    <label for="baiduAppId">百度翻译 App ID:</label>
+    <input type="text" id="baiduAppId" placeholder="请输入百度翻译 App ID" />
+    
+    <label for="baiduKey">百度翻译 Key:</label>
+    <input type="text" id="baiduKey" placeholder="请输入百度翻译 Key" />
+    
+    
+    <span id="saveMessage" style="margin-left: 10px;"></span>
+  </div>
 
   <script src="popup.js"></script>
 </body>

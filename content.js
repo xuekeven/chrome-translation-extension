@@ -16,6 +16,26 @@ let selectionTimeout = null;
 // 标记是否已添加加载动画的样式
 let loadingStyleAdded = false;
 
+// 在文件开头添加一个变量来存储开关状态
+let isTranslationEnabled = true;
+
+// 添加一个监听器来接收开关状态的更新
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.action === "toggleTranslation") {
+    isTranslationEnabled = request.isEnabled;
+    // 如果关闭了翻译功能，清除所有已存在的翻译相关元素
+    if (!isTranslationEnabled) {
+      hideTranslateIcon();
+      hideTranslatePopup();
+    }
+  }
+});
+
+// 在初始化时获取开关状态
+chrome.storage.sync.get(['isEnabled'], function(data) {
+  isTranslationEnabled = data.isEnabled !== undefined ? data.isEnabled : true;
+});
+
 // 添加这个新函数
 function saveAndRestoreSelection(action) {
   const selection = window.getSelection();
@@ -113,6 +133,8 @@ function showLoadingIcon() {
  * @param {Event} e - 点击事件对象
  */
 function handleIconClick(e) {
+  if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
+
   e.preventDefault(); // 阻止默认行为
   e.stopPropagation(); // 阻止事件冒泡
 
@@ -361,20 +383,17 @@ function stopDragging() {
   dragTarget = null;
 }
 
-// 修改鼠标释放事件监听器
+// 修改鼠标释放事件监听器，添加开关状态检查
 document.addEventListener('mouseup', function(e) {
+  if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
+
   const selectedText = window.getSelection().toString().trim();
-  if (
-    selectedText && !isChinese(selectedText)
-    // (isEnglishSentence(selectedText) || isEnglishWord(selectedText))
-  ) {
+  if (selectedText && !isChinese(selectedText)) {
     lastSelectedText = selectedText;
     const range = window.getSelection().getRangeAt(0);
     const rect = range.getBoundingClientRect();
     const x = e.clientX;
     const y = window.pageYOffset + rect.bottom;
-    console.log('Selected text:', selectedText); // 添加日志
-    console.log('Calling showTranslateIcon with:', x, y); // 添加日志
     saveAndRestoreSelection(() => {
       showTranslateIcon(x, y);
     });
@@ -408,12 +427,25 @@ document.addEventListener('click', function(e) {
 // 监听来自背景脚本的消息
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "translate") {
+    if (!isTranslationEnabled) {
+      sendResponse({text: null});
+      return;
+    }
     var selectedText = window.getSelection().toString().trim();
     if (selectedText && !isChinese(selectedText)) {
       sendResponse({text: selectedText});
     } else {
       sendResponse({text: null});
     }
+  } else if (request.action === "updateTranslation") {
+    if (!isTranslationEnabled) return;
+    updateTranslatePopup(request.translation, request.word, request.complete);
+  } else if (request.action === "playAudioInContent") {
+    if (!isTranslationEnabled) return;
+    const audio = new Audio(request.audioUrl);
+    audio.play().catch(error => {
+      console.error('Error playing audio:', error);
+    });
   }
   return true;
 });

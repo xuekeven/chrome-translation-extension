@@ -38,3 +38,30 @@ chrome.storage.sync.get(['googleApiKey', 'baiduAppId', 'baiduKey'], function(dat
   document.getElementById('baiduAppId').value = data.baiduAppId || '';
   document.getElementById('baiduKey').value = data.baiduKey || '';
 });
+
+// 保存开关状态
+document.getElementById('enableSwitch').addEventListener('change', function() {
+  // 添加 user-interacted 类以启用过渡动画
+  this.parentElement.classList.add('user-interacted');
+  
+  chrome.storage.sync.set({
+    isEnabled: this.checked
+  }, function() {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: "toggleTranslation",
+          isEnabled: document.getElementById('enableSwitch').checked
+        });
+      }
+    });
+  });
+});
+
+// 加载已保存的开关状态
+chrome.storage.sync.get(['isEnabled'], function(data) {
+  const enableSwitch = document.getElementById('enableSwitch');
+  // 如果从未设置过，默认为开启状态
+  enableSwitch.checked = data.isEnabled !== undefined ? data.isEnabled : true;
+  // 初始加载时不添加 user-interacted 类，这样就不会触发动画
+});
