@@ -227,8 +227,65 @@ function isEnglishWord(text) {
   return /^[a-zA-Z]+$/.test(text);
 }
 
+// 添加缓存相关函数
+async function getCachedWord(word) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['wordCache'], function(result) {
+      const cache = result.wordCache || {};
+      const cachedItem = cache[word];
+      
+      if (cachedItem) {
+        // 检查缓存是否过期（例如24小时）
+        const isExpired = Date.now() - cachedItem.timestamp > 24 * 60 * 60 * 1000;
+        if (isExpired) {
+          delete cache[word];
+          chrome.storage.local.set({ wordCache: cache });
+          resolve(null);
+        } else {
+          resolve(cachedItem);
+        }
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+async function cacheWord(word, data) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['wordCache'], function(result) {
+      const cache = result.wordCache || {};
+      // 添加时间戳，用于后续可能的缓存过期处理
+      cache[word] = {
+        data: data,
+        timestamp: Date.now()
+      };
+      // 限制缓存大小，最多存储100个单词
+      const words = Object.keys(cache);
+      if (words.length > 100) {
+        // 删除最早缓存的单词
+        delete cache[words[0]];
+      }
+      chrome.storage.local.set({ wordCache: cache }, resolve);
+    });
+  });
+}
+
 async function fetchWordDefinition(word, tabId) {
   try {
+    // 先检查缓存
+    const cachedResult = await getCachedWord(word);
+    if (cachedResult) {
+      console.log('Using cached result for:', word);
+      chrome.tabs.sendMessage(tabId, {
+        action: "updateTranslation", 
+        translation: cachedResult.data, 
+        complete: true,
+        word: word
+      });
+      return;
+    }
+
     const url = `https://dict.youdao.com/jsonapi_s?doctype=json&q=${encodeURIComponent(word)}`;
     const response = await fetch(url, {
       headers: {
@@ -238,7 +295,7 @@ async function fetchWordDefinition(word, tabId) {
     });
     const data = await response.json();
     
-    // 1. 标题行：包含单词、音标和查看更多按钮
+    // 生成翻译结果 HTML
     let result = `
       <div style="display: flex; align-items: center; margin-bottom: 5px;">
         <h2 style="font-size: 18px; color: white; margin: 0;">${word}</h2>
@@ -386,6 +443,9 @@ async function fetchWordDefinition(word, tabId) {
         </div>
       `;
     }
+
+    // 缓存结果
+    await cacheWord(word, result);
 
     chrome.tabs.sendMessage(tabId, {
       action: "updateTranslation", 
