@@ -316,7 +316,7 @@ async function fetchWordDefinition(word, tabId) {
           margin-left: 10px;
           cursor: pointer;
           font-family: Arial, sans-serif;
-        ">英 /${wordInfo.ukphone || 'n/a'}/</button>
+        ">🇬🇧 /${wordInfo.ukphone || 'n/a'}/</button>
         <button class="playButton" data-word="${word}" data-type="2" style="
           background: none;
           border: none;
@@ -328,7 +328,7 @@ async function fetchWordDefinition(word, tabId) {
           margin-left: 5px;
           cursor: pointer;
           font-family: Arial, sans-serif;
-        ">美 /${wordInfo.usphone || 'n/a'}/</button>
+        ">🇺🇸 /${wordInfo.usphone || 'n/a'}/</button>
       `;
     }
 

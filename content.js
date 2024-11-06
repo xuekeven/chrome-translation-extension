@@ -428,17 +428,6 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// 监听双击事件，用于翻译单词
-// document.addEventListener('dblclick', function(e) {
-//   const selectedText = window.getSelection().toString().trim();
-//   if (selectedText && isEnglishWord(selectedText)) {
-//     lastSelectedText = selectedText;
-//     translateText(selectedText, e.pageX, e.pageY + 20);
-//   } else {
-//     hideTranslateIcon();
-//   }
-// });
-
 // 监听来自背景脚本的消息
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "translate") {
@@ -471,13 +460,6 @@ document.addEventListener('mouseup', function() {
     isDragging = false;
     // 在拖动结束后，更新lastSelectedText为当前选中的文本
     lastSelectedText = window.getSelection().toString().trim();
-  }
-});
-
-// 修改消息监听器
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.action === "updateTranslation") {
-    updateTranslatePopup(request.translation, request.word, request.complete);
   }
 });
 
@@ -540,14 +522,3 @@ function updateTranslatePopup(translation, word, complete) {
     });
   });
 }
-
-// 处理来自 background 的音频播放消息
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.action === "playAudioInContent") {
-    const audio = new Audio(request.audioUrl);
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
-    });
-  }
-});
-
