@@ -19,6 +19,9 @@ let loadingStyleAdded = false;
 // 在文件开头添加一个变量来存储开关状态
 let isTranslationEnabled = true;
 
+// 添加一个变量来存储当前正在翻译的单词
+let currentTranslatingWord = '';
+
 // 添加一个监听器来接收开关状态的更新
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "toggleTranslation") {
@@ -259,6 +262,7 @@ function hideTranslatePopup() {
   const existingPopup = document.querySelector('.translate-popup');
   if (existingPopup) {
     existingPopup.remove();
+    currentTranslatingWord = ''; // 清除当前翻译的单词
   }
 }
 
@@ -310,6 +314,8 @@ function translateText(text, x, y) {
 }
 
 function updateTranslatePopup(newContent, word, complete) {
+  currentTranslatingWord = word || ''; // 如果是句子翻译，word 可能为空
+
   const translatePopup = document.querySelector('.translate-popup');
   if (translatePopup && translatePopup.updateContent) {
     translatePopup.updateContent(newContent);
@@ -388,16 +394,25 @@ document.addEventListener('mouseup', function(e) {
   if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
 
   const selectedText = window.getSelection().toString().trim();
-  if (selectedText && !isChinese(selectedText)) {
-    lastSelectedText = selectedText;
-    const range = window.getSelection().getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const x = e.clientX;
-    const y = window.pageYOffset + rect.bottom;
-    saveAndRestoreSelection(() => {
-      showTranslateIcon(x, y);
-    });
+  if (!selectedText || isChinese(selectedText)) return;
+
+  // 检查选中的文本是否在翻译弹层内
+  const translatePopup = document.querySelector('.translate-popup');
+  const isInsidePopup = translatePopup && translatePopup.contains(e.target);
+
+  // 如果在弹层内且选中的文本与当前翻译的单词相同，则不显示翻译图标
+  if (isInsidePopup && selectedText === currentTranslatingWord) {
+    return;
   }
+
+  lastSelectedText = selectedText;
+  const range = window.getSelection().getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  const x = e.clientX;
+  const y = window.pageYOffset + rect.bottom;
+  saveAndRestoreSelection(() => {
+    showTranslateIcon(x, y);
+  });
 });
 
 // 监听点击事件，用于隐藏翻译图标和弹出框
@@ -468,6 +483,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 // 在 updateTranslatePopup 函数中添加事件监听
 function updateTranslatePopup(translation, word, complete) {
+  currentTranslatingWord = word || ''; // 如果是句子翻译，word 可能为空
+
   let translatePopup = document.querySelector('.translate-popup');
   
   if (!translatePopup) {
