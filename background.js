@@ -205,22 +205,19 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "translate") {
     const text = request.text;
     if (isEnglishWord(text)) {
-      fetchWordDefinition(text, sender.tab.id)
-        .then(() => sendResponse({success: true}))
-        .catch((error) => {
-          console.error('Error in fetchWordDefinition:', error);
-          sendResponse({success: false, error: error.message});
-        });
+      fetchWordDefinition(text, sender.tab.id);
     } else {
-      translateText(text, sender.tab.id)
-        .then(() => sendResponse({success: true}))
-        .catch((error) => {
-          console.error('Error in translateText:', error);
-          sendResponse({success: false, error: error.message});
-        });
+      translateText(text, sender.tab.id);
     }
-    return true; // 保持消息通道开放
+    return false;
+  } else if (request.action === "playAudio") {
+    chrome.tabs.sendMessage(sender.tab.id, {
+      action: "playAudioInContent",
+      audioUrl: `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.word)}&type=${request.type}`
+    });
+    return false;
   }
+  return false;
 });
 
 function isEnglishWord(text) {
@@ -271,6 +268,16 @@ async function cacheWord(word, data) {
   });
 }
 
+// 获取用户的音标显示偏好
+async function getPhoneticPreference() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['phoneticPreference'], function(result) {
+      // 默认使用美音
+      resolve(result.phoneticPreference || 'us');
+    });
+  });
+}
+
 async function fetchWordDefinition(word, tabId) {
   try {
     // 先检查缓存
@@ -295,6 +302,9 @@ async function fetchWordDefinition(word, tabId) {
     });
     const data = await response.json();
     
+    // 获取用户偏好的音标显示方式
+    const phoneticPreference = await getPhoneticPreference();
+    
     // 生成翻译结果 HTML
     let result = `
       <div style="display: flex; align-items: center; margin-bottom: 5px;">
@@ -304,8 +314,9 @@ async function fetchWordDefinition(word, tabId) {
     // 添加音标按钮（如果有）
     if (data.ec?.word?.[0]) {
       const wordInfo = data.ec.word[0];
-      result += `
-        <button class="playButton" data-word="${word}" data-type="1" style="
+
+      const flagSwitcher = `
+        <button class="flagSwitcher" data-current="${phoneticPreference}" style="
           background: none;
           border: none;
           color: white;
@@ -315,21 +326,39 @@ async function fetchWordDefinition(word, tabId) {
           font-size: 12px;
           margin-left: 10px;
           cursor: pointer;
-          font-family: Arial, sans-serif;
-        ">🇬🇧 /${wordInfo.ukphone || 'n/a'}/</button>
-        <button class="playButton" data-word="${word}" data-type="2" style="
+        ">${phoneticPreference === 'uk' ? '🇬🇧' : '🇺🇸'}</button>
+      `;
+      const ukButton = `
+        <button class="playButton phoneticButton" data-word="${word}" data-type="1" data-phonetic="uk" style="
           background: none;
           border: none;
           color: white;
-          padding: 2px 5px;
+          padding: 2px;
           text-align: center;
           display: inline-block;
           font-size: 12px;
-          margin-left: 5px;
           cursor: pointer;
           font-family: Arial, sans-serif;
-        ">🇺🇸 /${wordInfo.usphone || 'n/a'}/</button>
+          ${phoneticPreference === 'us' ? 'display: none;' : ''}
+        ">/${wordInfo.ukphone || 'n/a'}/</button>
       `;
+
+      const usButton = `
+        <button class="playButton phoneticButton" data-word="${word}" data-type="2" data-phonetic="us" style="
+          background: none;
+          border: none;
+          color: white;
+          padding: 2px;
+          text-align: center;
+          display: inline-block;
+          font-size: 12px;
+          cursor: pointer;
+          font-family: Arial, sans-serif;
+          ${phoneticPreference === 'uk' ? 'display: none;' : ''}
+        ">/${wordInfo.usphone || 'n/a'}/</button>
+      `;
+
+      result += flagSwitcher + ukButton + usButton;
     }
 
     // 添加查看更多按钮
@@ -345,6 +374,7 @@ async function fetchWordDefinition(word, tabId) {
           margin-left: 10px;
           cursor: pointer;
           border-radius: 3px;
+          padding: 3px;
         ">查看更多</button>
       </div>
     `;
@@ -572,17 +602,5 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.action.onClicked.addListener((tab) => {
     // 可以在这里添加点击扩展图标时的行为
   });
-});
-
-// 修改播放音频的消息处理函数
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.action === "playAudio") {
-    // 向 content script 发送播放音频的消息
-    chrome.tabs.sendMessage(sender.tab.id, {
-      action: "playAudioInContent",
-      audioUrl: `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.word)}&type=${request.type}`
-    });
-    return true;
-  }
 });
 

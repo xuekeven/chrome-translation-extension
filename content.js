@@ -1,5 +1,3 @@
-// 存储翻译结果弹出框的DOM元素
-// let translatePopup = null;
 
 // 标记是否正在拖动弹出框
 let isDragging = false;
@@ -465,7 +463,7 @@ document.addEventListener('mouseup', function() {
 
 // 在 updateTranslatePopup 函数中添加事件监听
 function updateTranslatePopup(translation, word, complete) {
-  currentTranslatingWord = word || ''; // 如果是句子翻译，word 可能为空
+  currentTranslatingWord = word || '';
 
   let translatePopup = document.querySelector('.translate-popup');
   
@@ -489,7 +487,6 @@ function updateTranslatePopup(translation, word, complete) {
     `;
     document.body.appendChild(translatePopup);
     
-    // 添加拖动事件监听器
     translatePopup.addEventListener('mousedown', startDragging);
     document.addEventListener('mousemove', drag);
     document.addEventListener('mouseup', stopDragging);
@@ -521,4 +518,32 @@ function updateTranslatePopup(translation, word, complete) {
       window.open(`https://dict.youdao.com/result?word=${encodeURIComponent(word)}&lang=en`, '_blank');
     });
   });
+
+  // 为音标切换按钮添加点击事件
+  const flagSwitcher = translatePopup.querySelector('.flagSwitcher');
+  if (flagSwitcher) {
+    flagSwitcher.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const currentPhonetic = this.getAttribute('data-current');
+      const newPhonetic = currentPhonetic === 'us' ? 'uk' : 'us';
+      
+      // 更新显示状态
+      const ukButton = translatePopup.querySelector('[data-phonetic="uk"]');
+      const usButton = translatePopup.querySelector('[data-phonetic="us"]');
+      
+      if (newPhonetic === 'uk') {
+        ukButton.style.display = '';
+        usButton.style.display = 'none';
+        this.textContent = '🇬🇧';
+      } else {
+        ukButton.style.display = 'none';
+        usButton.style.display = '';
+        this.textContent = '🇺🇸';
+      }
+      
+      // 保存用户偏好
+      chrome.storage.sync.set({ phoneticPreference: newPhonetic });
+      this.setAttribute('data-current', newPhonetic);
+    });
+  }
 }
