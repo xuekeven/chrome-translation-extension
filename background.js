@@ -596,11 +596,3 @@ async function translateWithBaidu(text, appId, key) {
     throw new Error('Baidu translation failed');
   }
 }
-
-// 添加以下代码以保持 service worker 活跃
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.action.onClicked.addListener((tab) => {
-    // 可以在这里添加点击扩展图标时的行为
-  });
-});
-

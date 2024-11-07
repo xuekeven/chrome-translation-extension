@@ -1,4 +1,3 @@
-
 // 标记是否正在拖动弹出框
 let isDragging = false;
 
@@ -29,6 +28,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       hideTranslateIcon();
       hideTranslatePopup();
     }
+    return false; // 不需要异步响应
   }
 });
 
@@ -426,12 +426,12 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// 监听来自背景脚本的消息
+// 修改消息监听器
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "translate") {
     if (!isTranslationEnabled) {
       sendResponse({text: null});
-      return;
+      return false;
     }
     var selectedText = window.getSelection().toString().trim();
     if (selectedText && !isChinese(selectedText)) {
@@ -439,17 +439,20 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     } else {
       sendResponse({text: null});
     }
+    return false; // 不需要异步响应
   } else if (request.action === "updateTranslation") {
-    if (!isTranslationEnabled) return;
+    if (!isTranslationEnabled) return false;
     updateTranslatePopup(request.translation, request.word, request.complete);
+    return false; // 不需要异步响应
   } else if (request.action === "playAudioInContent") {
-    if (!isTranslationEnabled) return;
+    if (!isTranslationEnabled) return false;
     const audio = new Audio(request.audioUrl);
     audio.play().catch(error => {
       console.error('Error playing audio:', error);
     });
+    return false; // 不需要异步响应
   }
-  return true;
+  return false; // 默认返回 false
 });
 
 // 监听鼠标释放事件，用于处理拖动结束后的情况
