@@ -397,7 +397,7 @@ async function fetchWordDefinition(word, tabId) {
         <div style="margin-bottom: 5px;">
           <strong style="color: #ddd; font-size: 12px;">词形变化</strong>
           <ul style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
-            ${data.ec.word[0].wfs.map(wf => `<li style="color: white; font-size: 12px;"><span style="color: #white;">${wf.wf.name} </span> ${wf.wf.value}</li>`).join('')}
+            ${data.ec.word[0].wfs.map(wf => `<li style="color: white; font-size: 12px;"><span style="color: #white;">${wf.wf.name}</span> <span style="color: #white;">${wf.wf.value}</span></li>`).join('')}
           </ul>
         </div>
       `;
@@ -414,7 +414,8 @@ async function fetchWordDefinition(word, tabId) {
                 ${(rel.rel.words || []).map(w => `
                   <div>
                     <span style="color: #white;">${rel.rel.pos || ''}</span>
-                    ${w?.word || ''}${w?.tran}
+                    <span style="color: #white;">${w?.word || ''}</span>
+                    <span style="color: #white;">${w?.tran}</span>
                   </div>`).join('')}
               </div>
             `).join('')}
@@ -432,8 +433,8 @@ async function fetchWordDefinition(word, tabId) {
             ${data.syno.synos.map(syno => `
               <li style="color: white; font-size: 12px;">
                 <span style="color: #white;">${syno.syno.pos || ''}</span> 
-                ${(syno.syno.ws || []).map(w => w?.w || '').filter(Boolean).join(', ')}
-                ${syno.syno.tran ? `<br><span style="color: #white;"></span> ${syno.syno.tran}` : ''}
+                <span style="color: #white;">${(syno.syno.ws || []).map(w => w?.w || '').filter(Boolean).join(', ')}</span>
+                ${syno.syno.tran ? `<br><span style="color: #white;"></span> <span style="color: #white;">${syno.syno.tran}</span>` : ''}
               </li>
             `).join('')}
           </ul>
@@ -449,8 +450,8 @@ async function fetchWordDefinition(word, tabId) {
           <ul style="list-style-type: none; padding-left: 10px; margin: 5px 0;">
             ${data.blng_sents_part['sentence-pair'].map(pair => `
               <li style="color: white; margin-bottom: 5px; font-size: 12px;">
-                <div>${pair.sentence}</div>
-                <div style="color: #888;">${pair['sentence-translation']}</div>
+                <div><span style="color: #white;">${pair.sentence}</span></div>
+                <div><span style="color: #888;">${pair['sentence-translation']}</span></div>
               </li>
             `).join('')}
           </ul>
@@ -536,9 +537,9 @@ async function translateText(text, tabId) {
       action: "updateTranslation",
       translation: `
         <p style="font-size: 16px; color: white; margin: 0;">
-          <strong>原文：</strong><br>${text}<br><br>
-          <strong>百度翻译：</strong><br>${baiduResult}<br><br>
-          <strong>Google 翻译：</strong><br>${googleResult}
+          <strong>原文：</strong><br><span style="user-select: text; cursor: text;">${text}</span><br><br>
+          <strong>百度翻译：</strong><br><span style="user-select: text; cursor: text;">${baiduResult}</span><br><br>
+          <strong>Google 翻译：</strong><br><span style="user-select: text; cursor: text;">${googleResult}</span>
         </p>
       `,
       complete: true

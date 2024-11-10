@@ -367,11 +367,21 @@ function selectTextInDocument(text) {
 let dragTarget = null;
 
 function startDragging(e) {
-  if (e.target.style.cursor === 'move') {
+  // 如果点击的是按钮、链接或文本内容，不触发拖动
+  if (e.target.tagName.toLowerCase() === 'button' || 
+      e.target.tagName.toLowerCase() === 'a' || 
+      e.target.tagName.toLowerCase() === 'span' 
+    ) {
+    return;
+  }
+
+  // 获取最近的 translate-popup 父元素
+  const popup = e.target.closest('.translate-popup');
+  if (popup) {
     isDragging = true;
-    dragTarget = e.target;
-    dragOffsetX = e.clientX - dragTarget.offsetLeft;
-    dragOffsetY = e.clientY - dragTarget.offsetTop;
+    dragTarget = popup;
+    dragOffsetX = e.clientX - popup.offsetLeft;
+    dragOffsetY = e.clientY - popup.offsetTop;
   }
 }
 
@@ -386,7 +396,6 @@ function stopDragging() {
   isDragging = false;
   dragTarget = null;
 }
-
 // 修改鼠标释放事件监听器，添加开关状态检查
 document.addEventListener('mouseup', function(e) {
   if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
@@ -481,7 +490,6 @@ function updateTranslatePopup(translation, word, complete) {
       width: 350px;
       max-height: 500px;
       z-index: 1000;
-      cursor: move;
       line-height: 1.5;
       overflow-y: auto;
       overflow-x: hidden;
@@ -549,4 +557,15 @@ function updateTranslatePopup(translation, word, complete) {
       this.setAttribute('data-current', newPhonetic);
     });
   }
+
+  // 为所有包含文本的元素添加样式
+  const textElements = translatePopup.querySelectorAll('span');
+  textElements.forEach(element => {
+    if (element.textContent.trim()) {  // 只为包含文本的元素添加样式
+      element.style.userSelect = 'text';  // 允许文本选择
+      element.style.cursor = 'text';      // 文本光标
+    } else {
+      element.style.cursor = 'move';      // 空白区域显示移动光标
+    }
+  });
 }
