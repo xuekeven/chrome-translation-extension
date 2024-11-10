@@ -86,7 +86,7 @@ function createTranslateIcon(x, y) {
   `;
   translateIcon.className = 'translate-icon';
   translateIcon.innerHTML = '<span style="color: white; font-weight: bold;">译</span>';
-  translateIcon.addEventListener('click', handleIconClick);
+  translateIcon.addEventListener('click', e => handleIconClick(e, x, y));
   document.body.appendChild(translateIcon);
   console.log('Translate icon created at:', x, y); // 添加日志
   return translateIcon;
@@ -148,7 +148,7 @@ function showLoadingIcon() {
  * 处理翻译图标的点击事件
  * @param {Event} e - 点击事件对象
  */
-function handleIconClick(e) {
+function handleIconClick(e, x, y) {
   if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
 
   e.preventDefault(); // 阻止默认行为
@@ -156,12 +156,12 @@ function handleIconClick(e) {
 
   const iconRect = e.currentTarget.getBoundingClientRect();
   console.log('iconRect:', iconRect);
-  translateText(lastSelectedText, iconRect.left, iconRect.top);
+  translateText(lastSelectedText, iconRect.left, iconRect.top + window.scrollY);
 
   // 在短暂延迟后重新选择文本
   setTimeout(() => {
-    selectTextInDocument(lastSelectedText);
-  }, 10);
+    selectTextInDocument(lastSelectedText, x, y);
+  }, 0);
 }
 
 /**
@@ -184,7 +184,7 @@ function createTranslatePopup(text, x, y) {
     cursor: move;
     font-family: Arial, sans-serif;
     left: ${x}px;
-    top: ${y + window.scrollY}px; // 添加当前滚动位置
+    top: ${y}px; // 添加当前滚动位置
     overflow-y: auto;
     border-radius: 8px;
     width: 350px;
@@ -358,23 +358,59 @@ function hideLoadingIcon() {
 
 /**
  * 在文档中选择指定的文本
- * @param {string} text - 要选的文本
+ * @param {string} text - 要选择的文本
+ * @param {number} [x] - 目标位置的横坐标（可选）
+ * @param {number} [y] - 目标位置的纵坐标（可选）
  */
-function selectTextInDocument(text) {
+function selectTextInDocument(text, x, y) {
   const selection = window.getSelection();
   selection.removeAllRanges();
 
   const treeWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
   let node;
+  let closestNode = null;
+  let closestIndex = -1;
+  let closestDistance = Infinity;
+
+  // 遍历所有文本节点
   while (node = treeWalker.nextNode()) {
     const index = node.textContent.indexOf(text);
     if (index > -1) {
-      const range = document.createRange();
-      range.setStart(node, index);
-      range.setEnd(node, index + text.length);
-      selection.addRange(range);
-      break;
+      // 如果提供了坐标，计算距离并找到最近的节点
+      if (x !== undefined && y !== undefined) {
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + text.length);
+        const rect = range.getBoundingClientRect();
+        
+        // 计算节点中心点到目标位置的距离
+        const nodeX = rect.left + rect.width / 2;
+        const nodeY = rect.top + rect.height / 2 + window.scrollY;
+        const distance = Math.sqrt(
+          Math.pow(nodeX - x, 2) + 
+          Math.pow(nodeY - y, 2)
+        );
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestNode = node;
+          closestIndex = index;
+        }
+      } else {
+        // 如果没有提供坐标，使用第一个匹配的节点
+        closestNode = node;
+        closestIndex = index;
+        break;
+      }
     }
+  }
+
+  // 如果找到了节点，创建选区
+  if (closestNode) {
+    const range = document.createRange();
+    range.setStart(closestNode, closestIndex);
+    range.setEnd(closestNode, closestIndex + text.length);
+    selection.addRange(range);
   }
 }
 
@@ -434,9 +470,18 @@ document.addEventListener('mouseup', function(e) {
   const y = window.pageYOffset + rect.bottom;
 
   if (isDirectTranslateEnabled) {
-    // 直接显示翻译结果
-    console.log("直接显示翻译结果", x, y);
-    translateText(selectedText, x, y);
+    // 先保存当前的选中文本
+    const savedSelection = window.getSelection().toString();
+    // 清除选中状态，以便弹层和页面可以正常滚动
+    window.getSelection().removeAllRanges();
+    // 创建弹层并发送翻译请求
+    translateText(savedSelection, x, y);
+    // 防止事件冒泡
+    e.stopPropagation();
+    // 在短暂延迟后重新选择文本
+    setTimeout(() => {
+      selectTextInDocument(savedSelection, x, y);
+    }, 0);
   } else {
     // 显示翻译图标
     saveAndRestoreSelection(() => {
