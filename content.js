@@ -7,12 +7,6 @@ let dragOffsetX, dragOffsetY;
 // 存储最后选中的文本
 let lastSelectedText = '';
 
-// 用于延迟处理选择变化的定时器
-let selectionTimeout = null;
-
-// 标记是否已添加加载动画的样式
-let loadingStyleAdded = false;
-
 // 在文件开头添加一个变量来存储开关状态
 let isTranslationEnabled = true;
 
@@ -112,35 +106,6 @@ function hideTranslateIcon() {
   if (existingIcon) {
     existingIcon.remove();
     console.log('Existing translate icon removed'); // 添加日志
-  }
-}
-
-/**
- * 显示加载中的动画
- */
-function showLoadingIcon() {
-  const existingIcon = document.querySelector('.translate-icon');
-  if (existingIcon) {
-    existingIcon.innerHTML = '<div class="loading"></div>';
-    if (!loadingStyleAdded) {
-      const style = document.createElement('style');
-      style.textContent = `
-        .loading {
-          border: 3px solid rgba(255,255,255,0.3);
-          border-radius: 50%;
-          border-top: 3px solid white;
-          width: 20px;
-          height: 20px;
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `;
-      document.head.appendChild(style);
-      loadingStyleAdded = true;
-    }
   }
 }
 
@@ -290,25 +255,6 @@ function isChinese(text) {
 }
 
 /**
- * 检查文本是否为英文单词
- * @param {string} text - 要检查的文本
- * @returns {boolean} - 如果是英文单词返回true，否则返回false
- */
-function isEnglishWord(text) {
-  return /^[a-zA-Z]+$/.test(text);
-}
-
-/**
- * 检查文本是否为英文句子
- * @param {string} text - 要检查的文本
- * @returns {boolean} - 如果是英文句子返回true，否则返回false
- */
-function isEnglishSentence(text) {
-  // 使用正则表达式检查文本是否为英文句子
-  return /^[A-Z][^.!?]*[.!?]$/.test(text);
-}
-
-/**
  * 发送翻译请求并显示结果
  * @param {string} text - 要翻译的文本
  * @param {number} x - 结果显示的横坐标
@@ -325,35 +271,6 @@ function translateText(text, x, y) {
 
   isWaitingForTranslateResult = true;
   chrome.runtime.sendMessage({action: "translate", text: text});
-}
-function updateTranslatePopup(newContent, word, complete) {
-  currentTranslatingWord = word || ''; // 如果是句子翻译，word 可能为空
-
-  const translatePopup = document.querySelector('.translate-popup');
-  if (translatePopup && translatePopup.updateContent) {
-    translatePopup.updateContent(newContent);
-    
-    if (complete) {
-      // 添加按钮点击事件监听器（如果有的话）
-      setTimeout(() => {
-        const moreButtons = translatePopup.querySelectorAll('.moreButton');
-        moreButtons.forEach(button => {
-          button.addEventListener('click', (e) => {
-            e.stopPropagation(); // 阻止事件冒泡
-            const entryWord = button.getAttribute('data-word');
-            window.open(`https://www.youdao.com/result?word=${encodeURIComponent(entryWord)}&lang=en`, '_blank');
-          });
-        });
-      }, 0);
-    }
-  }
-}
-
-function hideLoadingIcon() {
-  const existingIcon = document.querySelector('.translate-icon');
-  if (existingIcon) {
-    existingIcon.remove();
-  }
 }
 
 /**
