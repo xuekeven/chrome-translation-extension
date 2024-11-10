@@ -83,3 +83,28 @@ document.querySelectorAll('.toggle-visibility').forEach(button => {
     }
   });
 });
+
+// 保存直接翻译开关状态
+document.getElementById('directTranslateSwitch').addEventListener('change', function() {
+  this.parentElement.classList.add('user-interacted');
+  
+  chrome.storage.sync.set({
+    directTranslate: this.checked
+  }, function() {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: "toggleDirectTranslate",
+          directTranslate: document.getElementById('directTranslateSwitch').checked
+        });
+      }
+    });
+  });
+});
+
+// 加载已保存的直接翻译开关状态
+chrome.storage.sync.get(['directTranslate'], function(data) {
+  const directTranslateSwitch = document.getElementById('directTranslateSwitch');
+  // 默认为关闭状态
+  directTranslateSwitch.checked = data.directTranslate || false;
+});

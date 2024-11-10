@@ -19,6 +19,12 @@ let isTranslationEnabled = true;
 // 添加一个变量来存储当前正在翻译的单词
 let currentTranslatingWord = '';
 
+// 添加一个变量来存储直接翻译开关状态
+let isDirectTranslateEnabled = false;
+
+// 添加一个变量来存储是否正在等待翻译结果
+let isWaitingForTranslateResult = false;
+
 // 添加一个监听器来接收开关状态的更新
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "toggleTranslation") {
@@ -30,11 +36,20 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
     return false; // 不需要异步响应
   }
+  if (request.action === "toggleDirectTranslate") {
+    isDirectTranslateEnabled = request.directTranslate;
+    return false;
+  }
 });
 
 // 在初始化时获取开关状态
 chrome.storage.sync.get(['isEnabled'], function(data) {
   isTranslationEnabled = data.isEnabled !== undefined ? data.isEnabled : true;
+});
+
+// 在初始化时获取直接翻译开关状态
+chrome.storage.sync.get(['directTranslate'], function(data) {
+  isDirectTranslateEnabled = data.directTranslate || false;
 });
 
 // 添加这个新函数
@@ -307,10 +322,10 @@ function translateText(text, x, y) {
   if (!popup) {
     popup = createTranslatePopup("正在翻译...", x, y);
   }
-  
+
+  isWaitingForTranslateResult = true;
   chrome.runtime.sendMessage({action: "translate", text: text});
 }
-
 function updateTranslatePopup(newContent, word, complete) {
   currentTranslatingWord = word || ''; // 如果是句子翻译，word 可能为空
 
@@ -417,9 +432,17 @@ document.addEventListener('mouseup', function(e) {
   const rect = range.getBoundingClientRect();
   const x = e.clientX;
   const y = window.pageYOffset + rect.bottom;
-  saveAndRestoreSelection(() => {
-    showTranslateIcon(x, y);
-  });
+
+  if (isDirectTranslateEnabled) {
+    // 直接显示翻译结果
+    console.log("直接显示翻译结果", x, y);
+    translateText(selectedText, x, y);
+  } else {
+    // 显示翻译图标
+    saveAndRestoreSelection(() => {
+      showTranslateIcon(x, y);
+    });
+  }
 });
 
 // 监听点击事件，用于隐藏翻译图标和弹出框
@@ -430,7 +453,7 @@ document.addEventListener('click', function(e) {
     hideTranslateIcon();
   }
   const translatePopup = document.querySelector('.translate-popup');
-  if (translatePopup && !translatePopup.contains(e.target)) {
+  if (translatePopup && !translatePopup.contains(e.target) && !isWaitingForTranslateResult) {
     hideTranslatePopup();
   }
 });
@@ -450,6 +473,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
     return false; // 不需要异步响应
   } else if (request.action === "updateTranslation") {
+    isWaitingForTranslateResult = false;
     if (!isTranslationEnabled) return false;
     updateTranslatePopup(request.translation, request.word, request.complete);
     return false; // 不需要异步响应
