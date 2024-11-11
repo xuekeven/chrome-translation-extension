@@ -34,6 +34,25 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     isDirectTranslateEnabled = request.directTranslate;
     return false;
   }
+  if (request.action === "playAudioInContent") {
+    // 创建 AudioContext
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // 将数组转回 ArrayBuffer
+    const arrayBuffer = new Uint8Array(request.audioData).buffer;
+    
+    // 解码音频数据
+    audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+      // 创建音频源
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+    }, function(error) {
+      console.error('Error decoding audio data:', error);
+    });
+  }
+  return false;
 });
 
 // 在初始化时获取开关状态
@@ -439,13 +458,6 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (!isTranslationEnabled) return false;
     updateTranslatePopup(request.translation, request.word, request.complete);
     return false; // 不需要异步响应
-  } else if (request.action === "playAudioInContent") {
-    if (!isTranslationEnabled) return false;
-    const audio = new Audio(request.audioUrl);
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
-    });
-    return false; // 不需要异步响应
   }
   return false; // 默认返回 false
 });
@@ -491,13 +503,15 @@ function updateTranslatePopup(translation, word, complete) {
   
   translatePopup.innerHTML = translation;
   
-  // 为播放按钮添加点击事件
+  // 修改播放按钮的击事件处理
   const playButtons = translatePopup.querySelectorAll('.playButton');
   playButtons.forEach(button => {
     button.addEventListener('click', function(e) {
       e.stopPropagation();
       const word = this.getAttribute('data-word');
       const type = this.getAttribute('data-type');
+      
+      // 直接发送消息给 background 脚本播放音频
       chrome.runtime.sendMessage({
         action: "playAudio",
         word: word,

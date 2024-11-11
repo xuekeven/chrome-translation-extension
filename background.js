@@ -211,10 +211,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
     return false;
   } else if (request.action === "playAudio") {
-    chrome.tabs.sendMessage(sender.tab.id, {
-      action: "playAudioInContent",
-      audioUrl: `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.word)}&type=${request.type}`
-    });
+    // 直接在 background 中播放音频
+    playAudioInBackground(request.word, request.type);
     return false;
   }
   return false;
@@ -475,7 +473,7 @@ async function fetchWordDefinition(word, tabId) {
       `;
     }
 
-    // 缓存结果
+    // 缓存结
     await cacheWord(word, result);
 
     chrome.tabs.sendMessage(tabId, {
@@ -595,5 +593,28 @@ async function translateWithBaidu(text, appId, key) {
     return json.trans_result[0].dst;
   } else {
     throw new Error('Baidu translation failed');
+  }
+}
+
+// 修改音频播放函数
+async function playAudioInBackground(word, type) {
+  try {
+    const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=${type}`;
+    
+    // 在 background 中获取音频数据
+    const response = await fetch(audioUrl);
+    const arrayBuffer = await response.arrayBuffer(); // 直接获取 ArrayBuffer
+    
+    // 获取当前活动标签页并发送音频数据
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: "playAudioInContent",
+          audioData: Array.from(new Uint8Array(arrayBuffer)) // 转换为数组以便传递
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching audio:', error);
   }
 }
