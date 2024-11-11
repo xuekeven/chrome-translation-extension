@@ -158,6 +158,7 @@ function handleIconClick(e, x, y) {
 function createTranslatePopup(text, x, y) {
   const translatePopup = document.createElement('div');
   translatePopup.style.cssText = `
+    text-align: left;
     position: absolute;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -481,6 +482,7 @@ function updateTranslatePopup(translation, word, complete) {
     translatePopup = document.createElement('div');
     translatePopup.className = 'translate-popup';
     translatePopup.style.cssText = `
+      text-align: left;
       position: fixed;
       padding: 10px;
       background: rgba(0, 0, 0, 0.8);
