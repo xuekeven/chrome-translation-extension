@@ -570,4 +570,21 @@ function updateTranslatePopup(translation, word, complete) {
       element.style.cursor = 'move';      // 空白区域显示移动光标
     }
   });
+
+  // 在更新弹窗内容后，如果是完整的翻译结果且有单词，根据用户偏好自动播放发音
+  if (complete && word) {
+    // 获取用户的音标偏好
+    chrome.storage.sync.get(['phoneticPreference'], function(result) {
+      // 默认使用美音
+      const preference = result.phoneticPreference || 'us';
+      const type = preference === 'us' ? 2 : 1;  // 2代表美音，1代表英音
+      
+      // 发送播放音频消息
+      chrome.runtime.sendMessage({
+        action: "playAudio",
+        word: word,
+        type: type
+      });
+    });
+  }
 }
