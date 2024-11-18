@@ -484,16 +484,13 @@ async function fetchWordDefinition(word, tabId) {
     });
   } catch (error) {
     console.error('API error:', error);
-    chrome.tabs.sendMessage(tabId, {
-      action: "updateTranslation", 
-      translation: "<p style='font-size: 16px; color: white; margin: 0;'>获取单词定义时出错。</p>", 
-      complete: true
-    });
-    throw error;
+    // 如果获取单词定义失败，则使用百度和Google翻译单词
+    const extra = "<p style='font-size: 16px; color: white; margin: 0;'>使用网易API获取单词定义时出错。<br>以下是使用百度和Google翻译的结果。</p>";
+    translateText(word, tabId, extra);
   }
 }
 
-async function translateText(text, tabId) {
+async function translateText(text, tabId, extra = '') {
   try {
     // 获取存储的 API 密钥和 App ID
     const { googleApiKey, baiduAppId, baiduKey } = await new Promise((resolve) => {
@@ -505,9 +502,13 @@ async function translateText(text, tabId) {
       action: "updateTranslation",
       translation: `
         <p style="font-size: 16px; color: white; margin: 0;">
-          <strong>原文：</strong><br>${text}<br><br>
-          <strong>百度翻译：</strong><br>正在翻译...<br><br>
-          <strong>Google 翻译：</strong><br>正在翻译...
+          ${extra}<br>
+          <strong>原文：</strong><br>
+          ${text}<br><br>
+          <strong>百度翻译：</strong><br>
+          正在翻译...<br><br>
+          <strong>Google 翻译：</strong><br>
+          正在翻译...
         </p>
       `,
       complete: false
@@ -535,9 +536,13 @@ async function translateText(text, tabId) {
       action: "updateTranslation",
       translation: `
         <p style="font-size: 16px; color: white; margin: 0;">
-          <strong>原文：</strong><br><span style="user-select: text; cursor: text;">${text}</span><br><br>
-          <strong>百度翻译：</strong><br><span style="user-select: text; cursor: text;">${baiduResult}</span><br><br>
-          <strong>Google 翻译：</strong><br><span style="user-select: text; cursor: text;">${googleResult}</span>
+          ${extra}<br>
+          <strong>原文：</strong><br>
+          <span style="user-select: text; cursor: text;">${text}</span><br><br>
+          <strong>百度翻译：</strong><br>
+          <span style="user-select: text; cursor: text;">${baiduResult}</span><br><br>
+          <strong>Google 翻译：</strong><br>
+          <span style="user-select: text; cursor: text;">${googleResult}</span>
         </p>
       `,
       complete: true
@@ -547,10 +552,12 @@ async function translateText(text, tabId) {
     console.error('Translation error:', error);
     chrome.tabs.sendMessage(tabId, {
       action: "updateTranslation",
-      translation: "<p style='font-size: 16px; color: white; margin: 0;'>翻译失败，请重试。</p>",
+      translation: `
+        ${extra}<br>
+        <p style='font-size: 16px; color: white; margin: 0;'>翻译失败，请重试。</p>
+      `,
       complete: true
     });
-    throw error;
   }
 }
 
