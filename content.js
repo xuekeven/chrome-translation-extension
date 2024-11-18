@@ -83,7 +83,7 @@ function saveAndRestoreSelection(action) {
 function createTranslateIcon(x, y) {
   const translateIcon = document.createElement('div');
   translateIcon.style.cssText = `
-    position: absolute;
+    position: fixed;
     width: 30px;
     height: 30px;
     background: #667eea;
@@ -140,7 +140,7 @@ function handleIconClick(e, x, y) {
 
   const iconRect = e.currentTarget.getBoundingClientRect();
   console.log('iconRect:', iconRect);
-  translateText(lastSelectedText, iconRect.left, iconRect.top + window.scrollY);
+  translateText(lastSelectedText, iconRect.left, iconRect.top);
 
   // 在短暂延迟后重新选择文本
   setTimeout(() => {
@@ -159,7 +159,7 @@ function createTranslatePopup(text, x, y) {
   const translatePopup = document.createElement('div');
   translatePopup.style.cssText = `
     text-align: left;
-    position: absolute;
+    position: fixed;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
@@ -233,27 +233,6 @@ function createTranslatePopup(text, x, y) {
 }
 
 /**
- * 显示翻译结果弹出框
- * @param {string} text - 翻译结果文本
- * @param {number} x - 弹出框的横坐标
- * @param {number} y - 弹出框的纵坐标
- */
-function showTranslatePopup(text, x, y) {
-  // 移除可能存在的旧弹出框
-  hideTranslatePopup();
-  
-  // 创建新弹出框
-  createTranslatePopup(text, x, y + window.scrollY); // 添加当前滚动位置
-
-  hideTranslateIcon();
-
-  // 在短暂延迟后重新选择文本
-  setTimeout(() => {
-    selectTextInDocument(lastSelectedText);
-  }, 10);
-}
-
-/**
  * 隐藏翻译结果弹出框
  */
 function hideTranslatePopup() {
@@ -265,13 +244,24 @@ function hideTranslatePopup() {
 }
 
 /**
- * 检查文本是否包含中文
+ * 检查文本是否要翻译
  * @param {string} text - 要检查的文本
- * @returns {boolean} - 如果包含中文返回true，否则返回false
+ * @returns {boolean} - 如果包含有意义的英文内容返回true，否则返回false
  */
-function isChinese(text) {
-  // 使用正则表达式检查文本是否包含中文字符
-  return /[\u4e00-\u9fa5]/.test(text);
+function isTranslateable(text) {
+    // 至少包含一个英文单词（1个或以上字母）的正则表达式
+    const englishWordPattern = /[a-zA-Z]{1,}/;
+  
+    // 排除常见的无意义字符串模式
+    const excludePatterns = [
+      /^[0-9-]+$/, // 纯数字和连字符
+      /^[a-f0-9-]{8,}$/i, // UUID类格式
+      /^\d+$/, // 纯数字
+      /^[^a-zA-Z]*$/ // 不包含任何英文字母的文本
+    ];
+  
+    // 检查是否包含至少一个有意义的英文单词
+    return englishWordPattern.test(text) && !excludePatterns.some(pattern => pattern.test(text));
 }
 
 /**
@@ -389,7 +379,8 @@ document.addEventListener('mouseup', function(e) {
   if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
 
   const selectedText = window.getSelection().toString().trim();
-  if (!selectedText || isChinese(selectedText)) return;
+  // 如果选中的文本不是英文单词，则不进行翻译
+  if (!selectedText || !isTranslateable(selectedText)) return;
 
   // 检查选中的文本是否在翻译弹层内
   const translatePopup = document.querySelector('.translate-popup');
@@ -403,21 +394,19 @@ document.addEventListener('mouseup', function(e) {
   lastSelectedText = selectedText;
   const range = window.getSelection().getRangeAt(0);
   const rect = range.getBoundingClientRect();
-  const x = e.clientX;
-  const y = window.pageYOffset + rect.bottom;
+  const x = rect.right;
+  const y = rect.bottom;
 
   if (isDirectTranslateEnabled) {
-    // 先保存当前的选中文本
-    const savedSelection = window.getSelection().toString();
     // 清除选中状态，以便弹层和页面可以正常滚动
     window.getSelection().removeAllRanges();
     // 创建弹层并发送翻译请求
-    translateText(savedSelection, x, y);
+    translateText(selectedText, x, y);
     // 防止事件冒泡
     e.stopPropagation();
     // 在短暂延迟后重新选择文本
     setTimeout(() => {
-      selectTextInDocument(savedSelection, x, y);
+      selectTextInDocument(selectedText, x, y);
     }, 0);
   } else {
     // 显示翻译图标
@@ -448,7 +437,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       return false;
     }
     var selectedText = window.getSelection().toString().trim();
-    if (selectedText && !isChinese(selectedText)) {
+    if (selectedText && isTranslateable(selectedText)) {
       sendResponse({text: selectedText});
     } else {
       sendResponse({text: null});
@@ -557,6 +546,15 @@ function updateTranslatePopup(translation, word, complete) {
       // 保存用户偏好
       chrome.storage.sync.set({ phoneticPreference: newPhonetic });
       this.setAttribute('data-current', newPhonetic);
+
+      // 播放新选择的音标发音
+      if (currentTranslatingWord) {
+        chrome.runtime.sendMessage({
+          action: "playAudio",
+          word: currentTranslatingWord,
+          type: newPhonetic === 'us' ? 2 : 1  // 2代表美音，1代表英音
+        });
+      }
     });
   }
 
