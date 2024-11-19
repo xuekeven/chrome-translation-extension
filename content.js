@@ -394,8 +394,8 @@ document.addEventListener('mouseup', function(e) {
   lastSelectedText = selectedText;
   const range = window.getSelection().getRangeAt(0);
   const rect = range.getBoundingClientRect();
-  const x = rect.right;
-  const y = rect.bottom;
+  const x = e.x;
+  const y = e.y + rect.height;
 
   if (isDirectTranslateEnabled) {
     // 清除选中状态，以便弹层和页面可以正常滚动

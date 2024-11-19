@@ -608,8 +608,8 @@ async function translateWithBaidu(text, appId, key) {
 
 // 修改音频播放函数
 async function playAudioInBackground(word, type) {
+  const audioType = type == '2' ? 'us' : 'uk';
   try {
-    const audioType = type === 2 ? 'us' : 'uk';
     // 先检查缓存
     const cachedResult = await getCachedWord(word);
     if (cachedResult && cachedResult.data.audio && cachedResult.data.audio[audioType]) {
