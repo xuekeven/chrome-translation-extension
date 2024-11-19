@@ -396,6 +396,7 @@ document.addEventListener('mouseup', function(e) {
   const rect = range.getBoundingClientRect();
   const x = e.x;
   const y = e.y + rect.height;
+  console.log('test mouseup', e, rect);
 
   if (isDirectTranslateEnabled) {
     // 清除选中状态，以便弹层和页面可以正常滚动

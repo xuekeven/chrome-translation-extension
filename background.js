@@ -488,7 +488,7 @@ async function fetchWordDefinition(word, tabId) {
   } catch (error) {
     console.error('API error:', error);
     // 如果获取单词定义失败，则使用百度和Google翻译单词
-    const extra = "<p style='font-size: 16px; color: white; margin: 0;'>使用网易API获取单词定义时出错。<br>以下是使用百度和Google翻译的结果。</p>";
+    const extra = "<p style='font-size: 16px; color: white; margin: 0;'>使用网易API获取单词定义时出错。<br>以下是使用百度和Google翻译的结果。</p><br>";
     translateText(word, tabId, extra);
   }
 }
@@ -505,7 +505,7 @@ async function translateText(text, tabId, extra = '') {
       action: "updateTranslation",
       translation: `
         <p style="font-size: 16px; color: white; margin: 0;">
-          ${extra}<br>
+          ${extra}
           <strong>原文：</strong><br>
           ${text}<br><br>
           <strong>百度翻译：</strong><br>
@@ -539,7 +539,7 @@ async function translateText(text, tabId, extra = '') {
       action: "updateTranslation",
       translation: `
         <p style="font-size: 16px; color: white; margin: 0;">
-          ${extra}<br>
+          ${extra}
           <strong>原文：</strong><br>
           <span style="user-select: text; cursor: text;">${text}</span><br><br>
           <strong>百度翻译：</strong><br>
@@ -556,7 +556,7 @@ async function translateText(text, tabId, extra = '') {
     chrome.tabs.sendMessage(tabId, {
       action: "updateTranslation",
       translation: `
-        ${extra}<br>
+        ${extra}
         <p style='font-size: 16px; color: white; margin: 0;'>翻译失败，请重试。</p>
       `,
       complete: true
