@@ -252,7 +252,10 @@ async function cacheWord(word, data) {
       const cache = result.wordCache || {};
       // 添加时间戳，用于后续可能的缓存过期处理
       cache[word] = {
-        data: data,
+        data: {
+          definition: data,
+          audio: {}
+        },
         timestamp: Date.now()
       };
       // 限制缓存大小，最多存储100个单词
@@ -280,11 +283,11 @@ async function fetchWordDefinition(word, tabId) {
   try {
     // 先检查缓存
     const cachedResult = await getCachedWord(word);
-    if (cachedResult) {
+    if (cachedResult && cachedResult.data && cachedResult.data.definition) {
       console.log('Using cached result for:', word);
       chrome.tabs.sendMessage(tabId, {
         action: "updateTranslation", 
-        translation: cachedResult.data, 
+        translation: cachedResult.data.definition, 
         complete: true,
         word: word
       });
@@ -606,22 +609,68 @@ async function translateWithBaidu(text, appId, key) {
 // 修改音频播放函数
 async function playAudioInBackground(word, type) {
   try {
+    const audioType = type === 2 ? 'us' : 'uk';
+    // 先检查缓存
+    const cachedResult = await getCachedWord(word);
+    if (cachedResult && cachedResult.data.audio && cachedResult.data.audio[audioType]) {
+      // 如果有缓存的音频数据，直接使用
+      chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+              action: "playAudioInContent",
+              audioData: cachedResult.data.audio[audioType]
+          });
+        }
+      });
+      return;
+    }
+
+    // 如果没有缓存，请求音频数据
     const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=${type}`;
-    
-    // 在 background 中获取音频数据
     const response = await fetch(audioUrl);
-    const arrayBuffer = await response.arrayBuffer(); // 直接获取 ArrayBuffer
-    
-    // 获取当前活动标签页并发送音频数据
+    const arrayBuffer = await response.arrayBuffer();
+    const audioData = Array.from(new Uint8Array(arrayBuffer));
+
+    // 播放音频
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, {
           action: "playAudioInContent",
-          audioData: Array.from(new Uint8Array(arrayBuffer)) // 转换为数组以便传递
+          audioData: audioData
         });
       }
     });
+    cacheWordAudio(word, audioType, audioData);
   } catch (error) {
     console.error('Error fetching audio:', error);
   }
+}
+
+// 添加缓存音频的函数
+async function cacheWordAudio(word, audioType, audioData) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['wordCache'], function(result) {
+      const cache = result.wordCache || {};
+      if (!cache[word]) {
+        cache[word] = {
+          data: { audio: {} },
+          timestamp: Date.now()
+        };
+      } else if (!cache[word].data.audio) {
+        cache[word].data.audio = {};
+      }
+      // 保存音频数据
+      cache[word].data.audio[audioType] = audioData;
+      // 更新时间戳
+      cache[word].timestamp = Date.now();
+      // 限制缓存大小，最多存储100个单词
+      const words = Object.keys(cache);
+      if (words.length > 100) {
+        // 删除最早缓存的单词
+        delete cache[words[0]];
+      }
+      
+      chrome.storage.local.set({ wordCache: cache }, resolve);
+    });
+  });
 }
