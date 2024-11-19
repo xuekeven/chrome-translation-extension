@@ -7,6 +7,9 @@ let dragOffsetX, dragOffsetY;
 // 存储最后选中的文本
 let lastSelectedText = '';
 
+// 存储最后选中的范围
+let lastSelectedRange = null;
+
 // 在文件开头添加一个变量来存储开关状态
 let isTranslationEnabled = true;
 
@@ -141,11 +144,6 @@ function handleIconClick(e, x, y) {
   const iconRect = e.currentTarget.getBoundingClientRect();
   console.log('iconRect:', iconRect);
   translateText(lastSelectedText, iconRect.left, iconRect.top);
-
-  // 在短暂延迟后重新选择文本
-  setTimeout(() => {
-    selectTextInDocument(lastSelectedText, x, y);
-  }, 0);
 }
 
 /**
@@ -279,6 +277,17 @@ function translateText(text, x, y) {
     popup = createTranslatePopup("正在翻译...", x, y);
   }
 
+  if (lastSelectedRange) {
+    const selection = window.getSelection();
+    selection.removeAllRanges(); // 先清除现有的选区
+    try {
+      const newRange = lastSelectedRange.cloneRange(); // 克隆范围以避免可能的引用问题
+      selection.addRange(newRange);
+    } catch (e) {
+      console.warn('Failed to restore text selection:', e);
+    }
+  }
+  
   isWaitingForTranslateResult = true;
   chrome.runtime.sendMessage({action: "translate", text: text});
 }
@@ -374,8 +383,8 @@ function stopDragging() {
   isDragging = false;
   dragTarget = null;
 }
-// 修改鼠标释放事件监听器，添加开关状态检查
-document.addEventListener('mouseup', function(e) {
+
+function mouseupHandler (e) {
   if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
 
   const selectedText = window.getSelection().toString().trim();
@@ -391,34 +400,31 @@ document.addEventListener('mouseup', function(e) {
     return;
   }
 
-  lastSelectedText = selectedText;
   const range = window.getSelection().getRangeAt(0);
   const rect = range.getBoundingClientRect();
   const x = e.x;
-  const y = e.y + rect.height;
+  const y = rect.bottom;
   console.log('test mouseup', e, rect);
 
+  lastSelectedText = selectedText;
+  lastSelectedRange = range;
+
   if (isDirectTranslateEnabled) {
-    // 清除选中状态，以便弹层和页面可以正常滚动
-    window.getSelection().removeAllRanges();
     // 创建弹层并发送翻译请求
     translateText(selectedText, x, y);
     // 防止事件冒泡
     e.stopPropagation();
-    // 在短暂延迟后重新选择文本
-    setTimeout(() => {
-      selectTextInDocument(selectedText, x, y);
-    }, 0);
   } else {
     // 显示翻译图标
-    saveAndRestoreSelection(() => {
-      showTranslateIcon(x, y);
-    });
+    showTranslateIcon(x, y);
   }
-});
+}
+// 修改鼠标释放事件监听器，添加开关状态检查
+document.addEventListener('mouseup', mouseupHandler);
 
 // 监听点击事件，用于隐藏翻译图标和弹出框
 document.addEventListener('click', function(e) {
+  if (!e.isTrusted) return;
   // 然后检查translatePopup是否存在，如果存在且点击不在其内部，则隐藏它
   const selectedText = window.getSelection().toString().trim();
   if (!selectedText) {
@@ -587,3 +593,4 @@ function updateTranslatePopup(translation, word, complete) {
     });
   }
 }
+
