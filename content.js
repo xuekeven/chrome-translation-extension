@@ -392,7 +392,7 @@ function stopDragging() {
   dragTarget = null;
 }
 
-function mouseupHandler (e) {
+function mouseupHandler(e) {
   if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
 
   const selectedText = window.getSelection().toString().trim();
@@ -413,12 +413,12 @@ function mouseupHandler (e) {
   const rect = range.getBoundingClientRect();
   const x = e.x;
   const y = rect.bottom;
-  console.log('test mouseup', e, rect);
+  console.log('test--- mouseup', e, rect, x, y);
 
   // 清除选区，方便操作、滚动页面
-  const selection = window.getSelection();
-  selection.removeAllRanges();
-  lastSelectedRange = range;
+  // const selection = window.getSelection();
+  // selection.removeAllRanges();
+  // lastSelectedRange = range;
 
   if (isDirectTranslateEnabled) {
     // 创建弹层并发送翻译请求
