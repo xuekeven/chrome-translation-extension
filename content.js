@@ -255,10 +255,17 @@ function isTranslateable(text) {
       /^[0-9-]+$/, // 纯数字和连字符
       /^[a-f0-9-]{8,}$/i, // UUID类格式
       /^\d+$/, // 纯数字
-      /^[^a-zA-Z]*$/ // 不包含任何英文字母的文本
+      /^[^a-zA-Z]*$/, // 不包含任何英文字母的文本
+      /[\u4e00-\u9fa5]/, // 包含中文字符
+      /^https?:\/\//, // 以 http:// 或 https:// 开头的 URL
+      /^www\./, // 以 www. 开头的 URL
+      /\.(com|net|org|edu|gov|mil|biz|info|io|uk|cn|jp)(\/.+)?$/, // 常见顶级域名结尾的 URL
+      /^[a-zA-Z]:\\/, // Windows 文件路径
+      /^\/[a-zA-Z]/, // Unix 文件路径
+      /^[a-zA-Z0-9]+:\/\// // 其他协议的 URI（如 ftp://, file:// 等）
     ];
   
-    // 检查是否包含至少一个有意义的英文单词
+    // 检查是否包含至少一个有意义的英文单词，且不匹配任何排除模式
     return englishWordPattern.test(text) && !excludePatterns.some(pattern => pattern.test(text));
 }
 
@@ -277,16 +284,17 @@ function translateText(text, x, y) {
     popup = createTranslatePopup("正在翻译...", x, y);
   }
 
-  if (lastSelectedRange) {
-    const selection = window.getSelection();
-    selection.removeAllRanges(); // 先清除现有的选区
-    try {
-      const newRange = lastSelectedRange.cloneRange(); // 克隆范围以避免可能的引用问题
-      selection.addRange(newRange);
-    } catch (e) {
-      console.warn('Failed to restore text selection:', e);
-    }
-  }
+  // 不再恢复选区，方便操作、滚动页面
+  // if (lastSelectedRange) {
+  //   const selection = window.getSelection();
+  //   selection.removeAllRanges(); // 先清除现有的选区
+  //   try {
+  //     const newRange = lastSelectedRange.cloneRange(); // 克隆范围避免可能的引用问题
+  //     selection.addRange(newRange);
+  //   } catch (e) {
+  //     console.warn('Failed to restore text selection:', e);
+  //   }
+  // }
   
   isWaitingForTranslateResult = true;
   chrome.runtime.sendMessage({action: "translate", text: text});
@@ -388,6 +396,7 @@ function mouseupHandler (e) {
   if (!isTranslationEnabled) return; // 如果翻译功能被禁用，直接返回
 
   const selectedText = window.getSelection().toString().trim();
+  lastSelectedText = selectedText;
   // 如果选中的文本不是英文单词，则不进行翻译
   if (!selectedText || !isTranslateable(selectedText)) return;
 
@@ -406,7 +415,9 @@ function mouseupHandler (e) {
   const y = rect.bottom;
   console.log('test mouseup', e, rect);
 
-  lastSelectedText = selectedText;
+  // 清除选区，方便操作、滚动页面
+  const selection = window.getSelection();
+  selection.removeAllRanges();
   lastSelectedRange = range;
 
   if (isDirectTranslateEnabled) {
